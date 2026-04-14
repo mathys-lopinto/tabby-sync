@@ -1,6 +1,4 @@
-from django.contrib.auth import login
-
-from tabby.app.models import User
+from tabby.app.models import User, hash_token
 
 
 class TokenMiddleware:
@@ -8,25 +6,25 @@ class TokenMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        token_value = None
+        token = self._extract_token(request)
+        if token:
+            user = User.objects.filter(
+                config_sync_token_hash=hash_token(token), is_active=True
+            ).first()
+            if user:
+                request.user = user
+                request._dont_enforce_csrf_checks = True
+
+        return self.get_response(request)
+
+    @staticmethod
+    def _extract_token(request):
         if "auth_token" in request.GET:
-            token_value = request.GET["auth_token"]
-        if request.META.get("HTTP_AUTHORIZATION"):
-            token_type, *credentials = request.META["HTTP_AUTHORIZATION"].split()
-            if token_type == "Bearer" and len(credentials):
-                token_value = credentials[0]
-
-        user = User.objects.filter(config_sync_token=token_value).first()
-
-        if user:
-            request.session.save = lambda *args, **kwargs: None
-            user.backend = "django.contrib.auth.backends.ModelBackend"
-            login(request, user)
-            request._dont_enforce_csrf_checks = True
-
-        response = self.get_response(request)
-
-        if user:
-            response.set_cookie = lambda *args, **kwargs: None
-
-        return response
+            return request.GET["auth_token"]
+        auth = request.META.get("HTTP_AUTHORIZATION", "")
+        # Tolerate any kind of whitespace (space, tab, multiple) between
+        # the scheme and the value, like the upstream middleware did.
+        parts = auth.split(maxsplit=1)
+        if len(parts) == 2 and parts[0] == "Bearer":
+            return parts[1].strip()
+        return None

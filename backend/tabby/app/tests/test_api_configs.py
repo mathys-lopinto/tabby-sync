@@ -78,18 +78,14 @@ class TestConfigsCreate:
         assert r.status_code == 201
         assert r.json()["name"] == "Émilie 🦊"
 
-    def test_name_above_model_max_length_currently_accepted(self, authed_client):
-        # Documents a serializer gap: the explicit `name = fields.CharField`
-        # in ConfigSerializer drops the model's max_length validator, so
-        # over-long names go through. SQLite ignores varchar limits, so
-        # values are stored as-is. On Postgres / MySQL this would fail at
-        # the DB level instead.
+    def test_name_above_max_length_rejected(self, authed_client):
         r = authed_client.post(
             "/api/1/configs",
             data={"name": "a" * 256, "content": "{}"},
             format="json",
         )
-        assert r.status_code == 201
+        assert r.status_code == 400
+        assert "name" in r.json()
 
     def test_create_large_content(self, authed_client):
         big = "x" * 1_000_000

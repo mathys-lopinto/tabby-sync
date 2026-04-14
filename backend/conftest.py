@@ -11,6 +11,7 @@ from tabby.app.models import Config, User
 
 @pytest.fixture
 def user(db):
+    """Returns a User. The cleartext token is on user._just_generated_token."""
     return User.objects.create(username="alice")
 
 
@@ -32,12 +33,14 @@ def api_client():
 @pytest.fixture
 def authed_client(user):
     client = APIClient()
-    client.credentials(HTTP_AUTHORIZATION=f"Bearer {user.config_sync_token}")
+    client.credentials(HTTP_AUTHORIZATION=f"Bearer {user._just_generated_token}")
     return client
 
 
 @pytest.fixture
 def other_authed_client(other_user):
     client = APIClient()
-    client.credentials(HTTP_AUTHORIZATION=f"Bearer {other_user.config_sync_token}")
+    client.credentials(
+        HTTP_AUTHORIZATION=f"Bearer {other_user._just_generated_token}"
+    )
     return client

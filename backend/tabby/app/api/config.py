@@ -7,7 +7,7 @@ from ..models import Config
 
 
 class ConfigSerializer(ModelSerializer):
-    name = fields.CharField(required=False)
+    name = fields.CharField(required=False, max_length=255)
 
     class Meta:
         model = Config

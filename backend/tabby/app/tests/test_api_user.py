@@ -9,7 +9,29 @@ class TestUserEndpoint:
         body = r.json()
         assert body["username"] == "alice"
         assert body["id"] == user.id
-        assert body["config_sync_token"] == user.config_sync_token
+
+    def test_token_value_never_leaks(self, authed_client):
+        r = authed_client.get("/api/1/user")
+        body = r.json()
+        # The key is kept for backwards compatibility with older Tabby
+        # builds that read it, but the value is always null.
+        assert body["config_sync_token"] is None
+        assert "config_sync_token_hash" not in body
+
+    def test_token_field_is_read_only(self, user, authed_client):
+        # Sending a value back must not be persisted anywhere.
+        r = authed_client.patch(
+            "/api/1/user",
+            data={"config_sync_token": "x" * 128},
+            format="json",
+        )
+        assert r.status_code == 200
+        user.refresh_from_db()
+        # Still hashed, still the original.
+        from tabby.app.models import hash_token
+        assert user.config_sync_token_hash == hash_token(
+            user._just_generated_token
+        )
 
     def test_unauthenticated_is_forbidden(self, api_client):
         r = api_client.get("/api/1/user")
@@ -18,26 +40,17 @@ class TestUserEndpoint:
     def test_username_is_read_only(self, user, authed_client):
         r = authed_client.put(
             "/api/1/user",
-            data={
-                "id": user.id,
-                "username": "renamed",
-                "config_sync_token": user.config_sync_token,
-                "active_config": None,
-            },
+            data={"username": "renamed", "active_config": None},
             format="json",
         )
         assert r.status_code == 200
         user.refresh_from_db()
         assert user.username == "alice"
 
-    def test_active_config_can_be_set(self, user, config, authed_client):
+    def test_active_config_can_be_set_via_put(self, user, config, authed_client):
         r = authed_client.put(
             "/api/1/user",
-            data={
-                "id": user.id,
-                "config_sync_token": user.config_sync_token,
-                "active_config": config.id,
-            },
+            data={"active_config": config.id},
             format="json",
         )
         assert r.status_code == 200
@@ -55,92 +68,65 @@ class TestUserMethodsNotAllowed:
         r = authed_client.delete("/api/1/user")
         assert r.status_code == 405
 
-    def test_patch_not_allowed(self, authed_client):
-        r = authed_client.patch("/api/1/user", data={}, format="json")
-        assert r.status_code == 405
+
+@pytest.mark.django_db
+class TestScopedActiveConfigDefenseInDepth:
+    def test_get_queryset_empty_for_anonymous(self, db):
+        from tabby.app.api.user import ScopedActiveConfig
+
+        field = ScopedActiveConfig(allow_null=True, required=False)
+        field._context = {}
+        assert list(field.get_queryset()) == []
+
+
+@pytest.mark.django_db
+class TestUserPatch:
+    def test_patch_partial_update_active_config(self, user, config, authed_client):
+        r = authed_client.patch(
+            "/api/1/user",
+            data={"active_config": config.id},
+            format="json",
+        )
+        assert r.status_code == 200
+        user.refresh_from_db()
+        assert user.active_config_id == config.id
+
+    def test_patch_partial_update_active_version(self, user, authed_client):
+        r = authed_client.patch(
+            "/api/1/user",
+            data={"active_version": "1.0.220"},
+            format="json",
+        )
+        assert r.status_code == 200
+        user.refresh_from_db()
+        assert user.active_version == "1.0.220"
 
 
 @pytest.mark.django_db
 class TestUserCrossUserSafety:
-    def test_assigning_other_users_active_config_is_currently_accepted(
+    def test_cannot_assign_other_users_config_as_active(
         self, user, other_user, authed_client
     ):
-        # Documents current behavior: the serializer does not scope
-        # active_config to the requesting user. If this becomes a
-        # security concern, scope the queryset on the field.
         from tabby.app.models import Config
 
         their = Config.objects.create(user=other_user, name="theirs")
-        r = authed_client.put(
+        r = authed_client.patch(
             "/api/1/user",
-            data={
-                "id": user.id,
-                "config_sync_token": user.config_sync_token,
-                "active_config": their.id,
-            },
+            data={"active_config": their.id},
             format="json",
         )
-        assert r.status_code == 200
+        assert r.status_code == 400
+        assert "active_config" in r.json()
         user.refresh_from_db()
-        assert user.active_config_id == their.id
-
-
-@pytest.mark.django_db
-class TestUserSyncTokenField:
-    """The token is the auth credential. The endpoint exposes it as
-    writable, so the client can rotate it through PUT."""
-
-    def test_token_shown_in_response(self, user, authed_client):
-        r = authed_client.get("/api/1/user")
-        assert r.json()["config_sync_token"] == user.config_sync_token
-
-    def test_token_can_be_rotated_through_put(self, user, authed_client):
-        new_token = "z" * 128
-        r = authed_client.put(
-            "/api/1/user",
-            data={
-                "id": user.id,
-                "config_sync_token": new_token,
-                "active_config": None,
-            },
-            format="json",
-        )
-        assert r.status_code == 200
-        user.refresh_from_db()
-        assert user.config_sync_token == new_token
-
-    def test_user_cannot_set_other_users_token(
-        self, user, other_user, authed_client
-    ):
-        # Even if the client tries the other user's token, the endpoint
-        # only mutates the requesting user.
-        r = authed_client.put(
-            "/api/1/user",
-            data={
-                "id": user.id,
-                "config_sync_token": other_user.config_sync_token,
-                "active_config": None,
-            },
-            format="json",
-        )
-        assert r.status_code == 200
-        user.refresh_from_db()
-        other_user.refresh_from_db()
-        # The requesting user's own token was overwritten with the
-        # supplied value, but the other user is untouched.
-        assert user.config_sync_token == other_user.config_sync_token
+        assert user.active_config_id is None
 
 
 @pytest.mark.django_db
 class TestUserActiveConfigEdgeCases:
     def test_setting_nonexistent_active_config(self, user, authed_client):
-        r = authed_client.put(
+        r = authed_client.patch(
             "/api/1/user",
-            data={
-                "id": user.id,
-                "config_sync_token": user.config_sync_token,
-                "active_config": 99999999,
-            },
+            data={"active_config": 99999999},
             format="json",
         )
         assert r.status_code == 400
@@ -150,13 +136,9 @@ class TestUserActiveConfigEdgeCases:
     def test_clearing_active_config(self, user, config, authed_client):
         user.active_config = config
         user.save()
-        r = authed_client.put(
+        r = authed_client.patch(
             "/api/1/user",
-            data={
-                "id": user.id,
-                "config_sync_token": user.config_sync_token,
-                "active_config": None,
-            },
+            data={"active_config": None},
             format="json",
         )
         assert r.status_code == 200

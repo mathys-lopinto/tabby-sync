@@ -1,4 +1,19 @@
 .vscode
+.idea
 .env
-app-dist
-.mypy_cache
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Tooling caches
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+
+# Django
+db.sqlite3
+/backend/public/

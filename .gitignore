@@ -19,7 +19,7 @@ db.sqlite3
 *.db
 /backend/public/
 
-# nginx TLS certs (self-signed or otherwise; never commit keys)
-/nginx/ssl/*.pem
-/nginx/ssl/*.key
-/nginx/ssl/*.crt
+# TLS certs (self-signed or otherwise; never commit keys)
+/caddy/ssl/*.pem
+/caddy/ssl/*.key
+/caddy/ssl/*.crt

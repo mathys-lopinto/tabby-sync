@@ -1,0 +1,57 @@
+{
+	# Caddy admin API is only exposed inside the container network.
+	admin 127.0.0.1:2019
+
+	# ACME email for Let's Encrypt (recovery and expiry notices).
+	email {$ACME_EMAIL}
+}
+
+# =============================================================================
+# Switching to a self-signed certificate (LAN / VPN / homelab)
+# -----------------------------------------------------------------------------
+# When the host is not reachable from the public Internet, Let's Encrypt
+# cannot complete the HTTP-01 challenge and Caddy will fail to obtain a
+# certificate. In that case, provide your own TLS material:
+#
+#   1. Set DOMAIN in .env to the hostname clients will use (any name works,
+#      for example `sync.local.lan` or `localhost`).
+#   2. Run `./scripts/generate-cert.sh` to produce
+#      caddy/ssl/fullchain.pem and caddy/ssl/privkey.pem (ECDSA P-256).
+#   3. Inside the site block below, uncomment the `tls ...` line so Caddy
+#      uses that certificate instead of requesting one from Let's Encrypt.
+#   4. Optional: in docker-compose.https.yml, drop the "80:80" port mapping
+#      since the HTTP-01 challenge is no longer needed.
+#   5. Recreate the stack:
+#        docker compose -f docker-compose.yml -f docker-compose.https.yml \
+#          up -d --force-recreate caddy
+#
+# Clients will raise a trust warning on the self-signed certificate until
+# it is imported into their trust store by hand.
+# =============================================================================
+
+{$DOMAIN} {
+	# tls /etc/caddy/ssl/fullchain.pem /etc/caddy/ssl/privkey.pem
+
+	encode gzip zstd
+	request_body {
+		max_size 2MB
+	}
+
+	header {
+		Strict-Transport-Security "max-age=15768000; includeSubDomains"
+		X-Frame-Options            "DENY"
+		X-Content-Type-Options     "nosniff"
+		Referrer-Policy            "strict-origin-when-cross-origin"
+		Permissions-Policy         "geolocation=(), microphone=(), camera=()"
+		-Server
+	}
+
+	@allowed path /api/* /admin/* /static/*
+	handle @allowed {
+		reverse_proxy tabby:80
+	}
+
+	handle {
+		respond 404
+	}
+}

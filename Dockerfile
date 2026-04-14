@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 
 ############################
-# Stage 1 — build wheels
+# Stage 1: build wheels
 ############################
 FROM python:3.14-slim AS builder
 
@@ -23,7 +23,7 @@ RUN python -m venv /venv \
 
 
 ############################
-# Stage 2 — runtime
+# Stage 2: runtime
 ############################
 FROM python:3.14-slim AS runtime
 

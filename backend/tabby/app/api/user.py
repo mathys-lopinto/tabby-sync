@@ -1,8 +1,8 @@
 from rest_framework import fields
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.mixins import RetrieveModelMixin, UpdateModelMixin
-from rest_framework.viewsets import GenericViewSet
 from rest_framework.serializers import ModelSerializer
+from rest_framework.viewsets import GenericViewSet
 
 from ..models import User
 

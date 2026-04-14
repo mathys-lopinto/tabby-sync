@@ -1,7 +1,7 @@
-from django.urls import path, include
+from django.urls import include, path
 from rest_framework import routers
-from . import config, user
 
+from . import config, user
 
 router = routers.DefaultRouter(trailing_slash=False)
 router.register("api/1/configs", config.ConfigViewSet)

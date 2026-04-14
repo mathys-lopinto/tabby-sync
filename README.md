@@ -1,190 +1,161 @@
-# Tabby Web
+# tabby-sync
 
-## Note on project status
+A minimal, self-hostable backend for the **config sync** feature of the
+[Tabby terminal](https://tabby.sh).
 
-> [!IMPORTANT]  
-> At this time I don't have the time to work on `tabby-web` and won't be able to provide help or support for it. I'm still happy to merge any fixes/improvement PRs. :v:
+This is a stripped-down fork of [tabby-web](https://github.com/Eugeny/tabby-web)
+that keeps only the endpoints the Tabby desktop client calls to push and
+pull its `config.yaml`. Everything else that made tabby-web a full web
+terminal and gateway has been removed.
 
+## Why this fork
 
-![](docs/screenshot.png)
+Upstream `tabby-web` bundles a lot of features that most self-hosters do
+not need for config sync alone: an Angular web terminal, a WebSocket
+gateway proxy for SSH/Telnet, OAuth social auth with seven providers,
+GitHub Sponsors integration, Tabby version distribution, analytics.
 
-This is the Tabby terminal, served as a web app. It also provides the config sync service for the Tabby app.
+If you only want your `config.yaml` synced between your machines, you end
+up running, patching, and monitoring all of it anyway.
 
-# How it works
+`tabby-sync` keeps the backend at about 300 lines of real Python
+(ignoring migrations) with eight production dependencies. Small enough
+to read end-to-end in an afternoon and small enough that you can
+personally own every CVE advisory against it.
 
-Tabby Web serves the [Tabby Terminal](https://github.com/Eugeny/tabby) as a web application while managing multiple config files, authentication, and providing TCP connections via a [separate gateway service](https://github.com/Eugeny/tabby-connection-gateway).
+## Scope
 
-# Documentation
+**In scope**
 
-- **[Deployment Guide](docs/DEPLOYMENT.md)** - Complete guide for production deployment
-- **[Connection Gateway](https://github.com/Eugeny/tabby-connection-gateway)** - For SSH/Telnet connections
+- Store a user's Tabby config on the server.
+- Allow the Tabby desktop client to pull and push it.
+- Authenticate the client via a static Bearer token.
+- Serve multiple configs per user with an `active` pointer.
 
-# Requirements
+**Out of scope**
 
-## Software Requirements
+- No web terminal, no browser UI. Tabby desktop is the only client.
+- No OAuth, no social login, no sign-up page. Users are created in
+  Django admin.
+- No connection gateway for SSH/Telnet. Run one separately if you need
+  it ([`tabby-connection-gateway`](https://github.com/Eugeny/tabby-connection-gateway)).
+- No Tabby app version distribution, no sponsors check, no analytics.
+- No TLS termination. Put a reverse proxy (Caddy, Traefik, nginx) in
+  front.
 
-* Python 3.10+ (3.12 recommended)
-* Node.js 18+ (for frontend build)
-* A database server supported by Django (MariaDB, Postgres, SQLite, etc.)
-* Storage for distribution files - local, S3, GCS or others supported by `fsspec`
-* Docker and Docker Compose (for containerized deployment)
+## Stack
 
-## System Requirements
+- Python 3.14, Django 6, Django REST Framework
+- Postgres 18 by default (SQLite and MySQL/MariaDB also supported)
+- Gunicorn, WhiteNoise
+- Containerized with a multi-stage Dockerfile on `python:3.14-slim`
 
-### Minimum (Build & Run)
+## Requirements
 
-| Resource | Requirement |
-|----------|-------------|
-| CPU | 2 cores |
-| RAM | 2GB (4GB recommended for building) |
-| Disk | 5GB |
+### Software
 
-> **Note:** Building the Docker image requires significant memory for the frontend compilation step. If you're running on a memory-constrained system (like Oracle Cloud Free Tier), consider using a pre-built image or building on a machine with more RAM.
+- Python 3.14+ for local development.
+- Poetry 2.x for dependency management.
+- Docker and Docker Compose for the containerized deployment.
+- Any database supported by Django: Postgres, MySQL/MariaDB, SQLite.
 
-### Runtime Only (Pre-built Image)
+### System
 
-| Resource | Requirement |
-|----------|-------------|
-| CPU | 1 core |
-| RAM | 512MB |
-| Disk | 1GB + app distributions |
+This fork carries none of the upstream frontend build, so resource
+needs are modest.
 
-### Recommended (Production)
+| Resource | Build | Runtime |
+|---|---|---|
+| CPU | 1 core | 1 core |
+| RAM | 512 MB | 256 MB |
+| Disk | 2 GB | 500 MB + database |
 
-| Resource | Requirement |
-|----------|-------------|
-| CPU | 2+ cores |
-| RAM | 2GB |
-| Disk | 10GB |
+## Architecture
 
-## Docker Build Requirements
+```
+Tabby desktop
+  |  Authorization: Bearer <config_sync_token>
+  v
+Reverse proxy (you provide)     <-- TLS, rate limit
+  |
+  v
+Gunicorn (4 workers by default)
+  |
+  v
+Django + DRF
+  |-- TokenMiddleware           <-- matches Bearer to User.config_sync_token
+  +-- ViewSets                  <-- /api/1/configs, /api/1/user
+  |
+  v
+Postgres / MySQL / SQLite
+```
 
-Building the Docker image requires significant resources due to the frontend compilation:
+## API
 
-| Resource | Minimum | Recommended |
-|----------|---------|-------------|
-| RAM | 2 GB | 4 GB |
-| CPU | 2 cores | 4 cores |
-| Disk | 5 GB | 10 GB |
+| Method | Route | Auth | Purpose |
+|---|---|---|---|
+| `GET`, `PUT` | `/api/1/user` | Bearer | Profile of the current user |
+| `GET`, `POST` | `/api/1/configs` | Bearer | List / create configs |
+| `GET`, `PUT`, `PATCH`, `DELETE` | `/api/1/configs/<id>` | Bearer | CRUD one config |
+| any | `/admin/` | session | Django admin |
 
-**Note:** The frontend build (webpack/Angular) is memory-intensive. If building on constrained systems (like Oracle Cloud Always Free tier with 1GB RAM), consider:
-- Using pre-built images from a CI/CD pipeline
-- Building on a larger machine and pushing to a registry
-- Adding swap space (not recommended for production)
+The Bearer value is the `config_sync_token` field on `User`,
+auto-generated on user creation (64 bytes, hex-encoded).
 
-# Quickstart (using `docker-compose`)
-
-You'll need:
-
-* OAuth credentials from GitHub, GitLab, Google or Microsoft for authentication.
-* For SSH and Telnet: a [`tabby-connection-gateway`](https://github.com/Eugeny/tabby-connection-gateway) to forward traffic.
-
-## Option 1: Pre-built Image (Recommended)
-
-Use the pre-built image from GitHub Container Registry - no build required:
+## Local development
 
 ```bash
-docker-compose -f docker-compose.prebuilt.yml up -d
-```
-
-The image is available at `ghcr.io/eugeny/tabby-web:latest`.
-
-## Option 2: Build from Source
-
-If you need to customize the build:
-
-```bash
-export DOCKER_BUILDKIT=1
-docker-compose up -d
-```
-
----
-
-Both options will start Tabby Web on port 9090 with MariaDB as a storage backend.
-
-For SSH and Telnet, once logged in, enter your connection gateway address and auth token in the settings.
-
-## Environment variables
-
-* `DATABASE_URL` (required).
-* `APP_DIST_STORAGE`: a `file://`, `s3://`, or `gcs://` URL to store app distros in.
-
-### Authentication Providers
-
-Only providers with credentials configured will appear as login options. Set the following environment variables for each provider you want to enable:
-
-| Provider | Environment Variables |
-|----------|----------------------|
-| GitHub | `SOCIAL_AUTH_GITHUB_KEY`, `SOCIAL_AUTH_GITHUB_SECRET` |
-| GitLab | `SOCIAL_AUTH_GITLAB_KEY`, `SOCIAL_AUTH_GITLAB_SECRET` |
-| Google | `SOCIAL_AUTH_GOOGLE_OAUTH2_KEY`, `SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET` |
-| Microsoft (multi-tenant) | `SOCIAL_AUTH_MICROSOFT_GRAPH_KEY`, `SOCIAL_AUTH_MICROSOFT_GRAPH_SECRET` |
-| Azure AD (single-tenant) | `SOCIAL_AUTH_AZUREAD_TENANT_OAUTH2_KEY`, `SOCIAL_AUTH_AZUREAD_TENANT_OAUTH2_SECRET`, `SOCIAL_AUTH_AZUREAD_TENANT_OAUTH2_TENANT_ID` |
-| Auth0 | `SOCIAL_AUTH_AUTH0_DOMAIN`, `SOCIAL_AUTH_AUTH0_KEY`, `SOCIAL_AUTH_AUTH0_SECRET` |
-| Generic OIDC | `SOCIAL_AUTH_OIDC_OIDC_ENDPOINT`, `SOCIAL_AUTH_OIDC_KEY`, `SOCIAL_AUTH_OIDC_SECRET` |
-
-For Auth0, set the callback URL to: `https://your-domain/api/1/auth/social/complete/auth0/`
-
-### Generic OIDC Provider
-
-The generic OIDC provider works with any OpenID Connect compliant identity provider, including:
-- **Authentik** - Self-hosted identity provider
-- **Authelia** - Self-hosted authentication server
-- **Keycloak** - Open source identity management
-- **Okta** - Enterprise identity platform
-- And any other OIDC-compliant provider
-
-Configuration:
-- `SOCIAL_AUTH_OIDC_OIDC_ENDPOINT`: The OIDC discovery endpoint (e.g., `https://authentik.example.com/application/o/<app-slug>/`)
-- `SOCIAL_AUTH_OIDC_KEY`: Client ID from your identity provider
-- `SOCIAL_AUTH_OIDC_SECRET`: Client secret from your identity provider
-- `SOCIAL_AUTH_OIDC_NAME` (optional): Custom button text (default: "SSO")
-
-Set the callback URL to: `https://your-domain/api/1/auth/social/complete/oidc/`
-
-**Note on MFA:** Multi-factor authentication is handled by your identity provider. Enable MFA in Authentik, Authelia, or your chosen provider to require 2FA for Tabby Web logins.
-
-### Azure AD Single-Tenant
-
-For organizations that want to restrict login to a specific Azure AD/Entra ID tenant (instead of allowing any Microsoft account), use the Azure AD single-tenant provider:
-
-- `SOCIAL_AUTH_AZUREAD_TENANT_OAUTH2_KEY`: Application (client) ID from Azure portal
-- `SOCIAL_AUTH_AZUREAD_TENANT_OAUTH2_SECRET`: Client secret
-- `SOCIAL_AUTH_AZUREAD_TENANT_OAUTH2_TENANT_ID`: Directory (tenant) ID
-
-Set the callback URL to: `https://your-domain/api/1/auth/social/complete/azuread-tenant-oauth2/`
-
-When registering your app in Azure portal, select "Accounts in this organizational directory only" for supported account types.
-
-## Adding Tabby app versions
-
-* `docker-compose run tabby /manage.sh add_version 1.0.163`
-
-You can find the available version numbers [here](https://www.npmjs.com/package/tabby-web-container).
-
-# Development setup
-
-Put your environment vars (`DATABASE_URL`, etc.) in the `.env` file in the root of the repo.
-
-For the frontend:
-
-```shell
-cd frontend
-yarn
-yarn run build # or yarn run watch
-```
-
-For the backend:
-
-```shell
 cd backend
-poetry install
-./manage.py migrate # set up the database
-./manage.py add_version 1.0.156-nightly.2 # install an app distribution
-PORT=9000 poetry run gunicorn # optionally with --reload
+poetry install                  # Postgres driver installed by default
+# For MariaDB/MySQL instead:
+# poetry install --extras mysql
+
+export DATABASE_URL=sqlite:////tmp/dev.db
+export DJANGO_SECRET_KEY=dev-not-secret
+./manage.sh migrate
+./manage.sh createsuperuser
+./manage.sh runserver
 ```
 
-# Security
+Lint and format with Ruff:
 
-* When using Tabby Web for SSH/Telnet connectivity, your traffic will pass through a hosted gateway service. It's encrypted in transit (HTTPS) and the gateway servers authenticate themselves with a certificate before connections are made. However there's a non-zero risk of a MITM if a gateway service is compromised and the attacker gains access to the service's private key.
-* You can alleviate this risk by [hosting your own gateway service](https://github.com/Eugeny/tabby-connection-gateway), or your own copy of Tabby Web altogether.
+```bash
+poetry run ruff check .
+poetry run ruff format .
+```
+
+## Database selection
+
+The backend is database-agnostic. Set `DATABASE_URL` accordingly:
+
+```env
+# SQLite (no driver needed)
+DATABASE_URL=sqlite:////absolute/path/to/dev.db
+
+# Postgres (driver installed by default)
+DATABASE_URL=postgres://tabby:pass@host:5432/tabby
+
+# MySQL / MariaDB (requires the mysql extra)
+DATABASE_URL=mysql://tabby:pass@host:3306/tabby
+```
+
+## Security notes
+
+- The app has no TLS of its own. CSRF and session cookies are only
+  marked `Secure` when a recognized HTTPS `FRONTEND_URL` is configured.
+- `config_sync_token` is a bearer secret. Anyone holding it can read
+  and overwrite the user's Tabby config. Treat it like a password.
+- The app performs no rate limiting. Put one at the reverse proxy if
+  the instance is exposed publicly.
+- The admin site is the only way to provision users. Protect it behind
+  an allowlist or VPN where possible.
+
+## Credits
+
+This project is a fork of [`tabby-web`](https://github.com/Eugeny/tabby-web)
+by [Eugeny](https://github.com/Eugeny), distributed under the MIT license.
+The original copyright notice is preserved in [`LICENSE`](LICENSE).
+
+## License
+
+MIT. See [`LICENSE`](LICENSE).

@@ -1,5 +1,6 @@
-from tabby.app.models import User
 from django.contrib.auth import login
+
+from tabby.app.models import User
 
 
 class TokenMiddleware:
@@ -19,9 +20,9 @@ class TokenMiddleware:
 
         if user:
             request.session.save = lambda *args, **kwargs: None
-            setattr(user, "backend", "django.contrib.auth.backends.ModelBackend")
+            user.backend = "django.contrib.auth.backends.ModelBackend"
             login(request, user)
-            setattr(request, "_dont_enforce_csrf_checks", True)
+            request._dont_enforce_csrf_checks = True
 
         response = self.get_response(request)
 

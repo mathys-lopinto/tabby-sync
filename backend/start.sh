@@ -1,7 +1,5 @@
 #!/bin/sh
-if [[ -n "$DOCKERIZE_ARGS" ]]; then
-    dockerize $DOCKERIZE_ARGS
-fi
+set -e
 cd /app
 /venv/*/bin/python ./manage.py migrate
 exec /venv/*/bin/gunicorn

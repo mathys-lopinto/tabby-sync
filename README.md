@@ -102,7 +102,27 @@ Postgres / MySQL / SQLite
 The Bearer value is the `config_sync_token` field on `User`,
 auto-generated on user creation (64 bytes, hex-encoded).
 
-## Local development
+## Running it
+
+### Production (Docker)
+
+```bash
+cp .env.example .env
+sed -i "s/change-me-please/$(openssl rand -hex 24)/" .env
+sed -i "s/^DJANGO_SECRET_KEY=.*/DJANGO_SECRET_KEY=$(openssl rand -hex 32)/" .env
+
+docker compose up -d
+docker compose exec tabby /app/manage.sh createsuperuser
+```
+
+The backend listens on `http://localhost:9090`. The admin is served
+at `/admin/`.
+
+### Local development
+
+The `manage.sh` wrapper is meant for the container (paths under
+`/app` and `/venv`). For host development, call Django through
+Poetry directly:
 
 ```bash
 cd backend
@@ -110,12 +130,18 @@ poetry install                  # Postgres driver installed by default
 # For MariaDB/MySQL instead:
 # poetry install --extras mysql
 
-export DATABASE_URL=sqlite:////tmp/dev.db
-export DJANGO_SECRET_KEY=dev-not-secret
-./manage.sh migrate
-./manage.sh createsuperuser
-./manage.sh runserver
+cat > .env <<EOF
+DATABASE_URL=sqlite:///$(pwd)/dev.db
+DJANGO_SECRET_KEY=dev-not-secret
+DEBUG=True
+EOF
+
+poetry run python manage.py migrate
+poetry run python manage.py createsuperuser
+poetry run python manage.py runserver
 ```
+
+The dev server listens on `http://127.0.0.1:8000`.
 
 Lint and format with Ruff:
 
@@ -123,6 +149,25 @@ Lint and format with Ruff:
 poetry run ruff check .
 poetry run ruff format .
 ```
+
+### Creating a sync user
+
+Every client gets its own user. Steps:
+
+1. Open `/admin/` and sign in with the superuser created above.
+2. Go to **Users** and click **Add user**.
+   - Set a username.
+   - Set **Password-based authentication** to **Disabled** (the
+     account only uses its Bearer token).
+3. Save. Django redirects to the edit view.
+4. Open the **Tabby sync** fieldset and copy **Config sync token**.
+5. In Tabby desktop, go to **Settings** then **Config sync** and paste:
+   - **Server:** your deployment URL (e.g. `http://localhost:9090`
+     for a local Docker stack, or your HTTPS domain in prod).
+   - **Token:** the value copied above.
+
+Never grant `is_staff` or `is_superuser` to a sync-only user. Keep
+the admin privileges on a separate account.
 
 ## Database selection
 

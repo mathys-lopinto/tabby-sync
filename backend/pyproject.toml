@@ -1,8 +1,9 @@
 [tool.poetry]
 name = "tabby-sync"
-version = "1.0.0"
+version = "1.0.0-alpha1"
 description = "Minimal Tabby config sync backend"
 authors = []
+package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.14"
@@ -30,7 +31,7 @@ extend-exclude = ["migrations"]
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM", "DJ"]
 ignore = [
-    "E501",  # line too long — handled by the formatter
+    "E501",  # line too long: handled by the formatter
 ]
 
 [tool.ruff.format]

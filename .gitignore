@@ -14,10 +14,17 @@ venv/
 .mypy_cache/
 .pytest_cache/
 
+# Coverage
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
 # Django
 db.sqlite3
 *.db
-/backend/public/
+/backend/public/*
+!/backend/public/.gitkeep
 
 # TLS certs (self-signed or otherwise; never commit keys)
 /caddy/ssl/*.pem

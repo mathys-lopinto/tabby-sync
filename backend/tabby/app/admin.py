@@ -1,22 +1,15 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import Gateway, User, Config
+
+from .models import Config, User
 
 
-class CustomUserAdmin(UserAdmin):
+class SyncUserAdmin(UserAdmin):
     fieldsets = UserAdmin.fieldsets + (
-        (
-            None,
-            {
-                "fields": (
-                    "custom_connection_gateway",
-                    "custom_connection_gateway_token",
-                )
-            },
-        ),
+        ("Tabby sync", {"fields": ("config_sync_token", "active_config", "active_version")}),
     )
+    readonly_fields = ("config_sync_token",)
 
 
-admin.site.register(User, CustomUserAdmin)
+admin.site.register(User, SyncUserAdmin)
 admin.site.register(Config)
-admin.site.register(Gateway)

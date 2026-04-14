@@ -1,12 +1,12 @@
 import os
-import dj_database_url
-from dotenv import load_dotenv
 from pathlib import Path
 from urllib.parse import urlparse
 
+import dj_database_url
+from dotenv import load_dotenv
+
 load_dotenv()
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure")
@@ -17,8 +17,6 @@ USE_X_FORWARDED_HOST = True
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 
-# Application definition
-
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -27,7 +25,6 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
-    "social_django",
     "corsheaders",
     "tabby.app",
 ]
@@ -43,7 +40,6 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "tabby.middleware.TokenMiddleware",
-    "tabby.middleware.GAMiddleware",
 ]
 
 ROOT_URLCONF = "tabby.urls"
@@ -75,18 +71,10 @@ CACHES = {
 }
 
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
-    },
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
 AUTH_USER_MODEL = "app.User"
@@ -96,21 +84,15 @@ REST_FRAMEWORK = {
 }
 
 LANGUAGE_CODE = "en-us"
-
 TIME_ZONE = "UTC"
-
 USE_I18N = True
-
 USE_L10N = True
-
 USE_TZ = True
 
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-    "formatters": {
-        "simple": {"format": "%(levelname)s %(message)s"},
-    },
+    "formatters": {"simple": {"format": "%(levelname)s %(message)s"}},
     "handlers": {
         "console": {
             "level": "INFO",
@@ -134,106 +116,12 @@ CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_NAME = "XSRF-TOKEN"
 CSRF_HEADER_NAME = "HTTP_X_XSRF_TOKEN"
 
-AUTHENTICATION_BACKENDS = (
-    "social_core.backends.github.GithubOAuth2",
-    "social_core.backends.gitlab.GitLabOAuth2",
-    "social_core.backends.azuread.AzureADOAuth2",
-    "social_core.backends.azuread_tenant.AzureADTenantOAuth2",
-    "social_core.backends.microsoft.MicrosoftOAuth2",
-    "social_core.backends.google.GoogleOAuth2",
-    "social_core.backends.auth0.Auth0OAuth2",
-    "social_core.backends.open_id_connect.OpenIdConnectAuth",
-    "django.contrib.auth.backends.ModelBackend",
-)
-
-SOCIAL_AUTH_GITHUB_SCOPE = ["read:user", "user:email"]
-SOCIAL_AUTH_AUTH0_SCOPE = ["openid", "profile", "email"]
-SOCIAL_AUTH_AUTH0_EXTRA_DATA = ["id_token"]
-# Auth0 uses RS256 for ID tokens
-SOCIAL_AUTH_ALLOWED_REDIRECT_HOSTS = ["*"]
-SOCIAL_AUTH_PIPELINE = (
-    "social_core.pipeline.social_auth.social_details",
-    "social_core.pipeline.social_auth.social_uid",
-    "social_core.pipeline.social_auth.auth_allowed",
-    "social_core.pipeline.social_auth.social_user",
-    "social_core.pipeline.user.get_username",
-    "social_core.pipeline.social_auth.associate_by_email",
-    "social_core.pipeline.user.create_user",
-    "social_core.pipeline.social_auth.associate_user",
-    "social_core.pipeline.social_auth.load_extra_data",
-    "social_core.pipeline.user.user_details",
-)
-
-APP_DIST_STORAGE = os.getenv("APP_DIST_STORAGE", "file://" + str(BASE_DIR / "app-dist"))
-NPM_REGISTRY = os.getenv("NPM_REGISTRY", "https://registry.npmjs.org").rstrip("/")
-FRONTEND_BUILD_DIR = Path(
-    os.getenv("FRONTEND_BUILD_DIR", BASE_DIR / "../frontend/build")
-)
-
-FRONTEND_URL = None
-CORS_EXTRA_URL = None
-BACKEND_URL = None
-GITHUB_ELIGIBLE_SPONSORSHIPS = None
-
-for key in [
-    "CORS_EXTRA_URL",
-    "FRONTEND_URL",
-    "BACKEND_URL",
-    "SOCIAL_AUTH_GITHUB_KEY",
-    "SOCIAL_AUTH_GITHUB_SECRET",
-    "SOCIAL_AUTH_GITLAB_KEY",
-    "SOCIAL_AUTH_GITLAB_SECRET",
-    "SOCIAL_AUTH_GOOGLE_OAUTH2_KEY",
-    "SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET",
-    "SOCIAL_AUTH_MICROSOFT_GRAPH_KEY",
-    "SOCIAL_AUTH_MICROSOFT_GRAPH_SECRET",
-    "SOCIAL_AUTH_AUTH0_DOMAIN",
-    "SOCIAL_AUTH_AUTH0_KEY",
-    "SOCIAL_AUTH_AUTH0_SECRET",
-    "SOCIAL_AUTH_OIDC_OIDC_ENDPOINT",
-    "SOCIAL_AUTH_OIDC_KEY",
-    "SOCIAL_AUTH_OIDC_SECRET",
-    "SOCIAL_AUTH_OIDC_NAME",
-    "SOCIAL_AUTH_AZUREAD_TENANT_OAUTH2_KEY",
-    "SOCIAL_AUTH_AZUREAD_TENANT_OAUTH2_SECRET",
-    "SOCIAL_AUTH_AZUREAD_TENANT_OAUTH2_TENANT_ID",
-    "CONNECTION_GATEWAY_AUTH_CA",
-    "CONNECTION_GATEWAY_AUTH_CERTIFICATE",
-    "CONNECTION_GATEWAY_AUTH_KEY",
-    "GITHUB_ELIGIBLE_SPONSORSHIPS",
-    "GITHUB_SPONSORS_MIN_PAYMENT",
-    "GA_ID",
-    "GA_DOMAIN",
-]:
-    globals()[key] = os.getenv(key)
-
-
-for key in [
-    "GITHUB_SPONSORS_MIN_PAYMENT",
-]:
-    globals()[key] = int(globals()[key]) if globals()[key] else None
-
-
-for key in [
-    "CONNECTION_GATEWAY_AUTH_CA",
-    "CONNECTION_GATEWAY_AUTH_CERTIFICATE",
-    "CONNECTION_GATEWAY_AUTH_KEY",
-]:
-    v = globals()[key]
-    if v and not os.path.exists(v):
-        raise ValueError(f"{v} does not exist")
-
-if GITHUB_ELIGIBLE_SPONSORSHIPS:
-    GITHUB_ELIGIBLE_SPONSORSHIPS = GITHUB_ELIGIBLE_SPONSORSHIPS.split(",")
-else:
-    GITHUB_ELIGIBLE_SPONSORSHIPS = []
-
-
 STATIC_URL = "/static/"
-if FRONTEND_BUILD_DIR.exists():
-    STATICFILES_DIRS = [FRONTEND_BUILD_DIR]
 STATIC_ROOT = BASE_DIR / "public"
 
+FRONTEND_URL = os.getenv("FRONTEND_URL")
+CORS_EXTRA_URL = os.getenv("CORS_EXTRA_URL")
+BACKEND_URL = os.getenv("BACKEND_URL")
 
 if FRONTEND_URL or CORS_EXTRA_URL:
     cors_url = CORS_EXTRA_URL or FRONTEND_URL
@@ -260,16 +148,3 @@ if FRONTEND_URL or CORS_EXTRA_URL:
     if cors_url.startswith("https://"):
         CSRF_COOKIE_SECURE = True
         SESSION_COOKIE_SECURE = True
-else:
-    FRONTEND_URL = ""
-
-if FRONTEND_URL:
-    LOGIN_REDIRECT_URL = FRONTEND_URL
-    frontend_domain = urlparse(FRONTEND_URL).hostname
-    SESSION_COOKIE_DOMAIN = os.getenv("SESSION_COOKIE_DOMAIN", cors_domain)
-    SESSION_COOKIE_SAMESITE = None
-    CSRF_COOKIE_DOMAIN = cors_domain
-    if FRONTEND_URL.startswith("https://"):
-        CSRF_COOKIE_SECURE = True
-else:
-    LOGIN_REDIRECT_URL = '/'

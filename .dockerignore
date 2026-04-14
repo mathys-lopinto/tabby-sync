@@ -1,5 +1,41 @@
-backend/__pycache__
-backend/public
-frontend/build
-frontend/build-server
-frontend/node_modules
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Environment / secrets
+.env
+.env.*
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Tool caches
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Django artifacts
+db.sqlite3
+backend/public/
+
+# Docs & repo meta (not needed inside the image)
+README.md
+LICENSE
+.editorconfig
+.github/
+
+# Docker files themselves
+Dockerfile
+.dockerignore
+docker-compose.yml
+docker-compose.*.yml

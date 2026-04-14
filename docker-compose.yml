@@ -3,39 +3,31 @@ services:
         build: .
         restart: always
         depends_on:
-        - db
+            db:
+                condition: service_healthy
         ports:
-        - 9090:80
+            - "${HOST_PORT:-9090}:80"
         environment:
-        - DATABASE_URL=mysql://root:123@db/tabby
-        - PORT=80
-        - DEBUG=False
-        - DOCKERIZE_ARGS="-wait tcp://db:3306 -timeout 60s"
-        #
-        # OAuth Providers - uncomment and configure:
-        # - SOCIAL_AUTH_GITHUB_KEY=your_github_client_id
-        # - SOCIAL_AUTH_GITHUB_SECRET=your_github_client_secret
-        # - SOCIAL_AUTH_GITLAB_KEY=your_gitlab_client_id
-        # - SOCIAL_AUTH_GITLAB_SECRET=your_gitlab_client_secret
-        # - SOCIAL_AUTH_GOOGLE_OAUTH2_KEY=your_google_client_id
-        # - SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET=your_google_client_secret
-        #
-        # Microsoft/Azure AD (multi-tenant - allows any Microsoft account):
-        # - SOCIAL_AUTH_MICROSOFT_GRAPH_KEY=your_microsoft_client_id
-        # - SOCIAL_AUTH_MICROSOFT_GRAPH_SECRET=your_microsoft_client_secret
-        #
-        # Azure AD Single-Tenant (restricts to specific organization):
-        # - SOCIAL_AUTH_AZUREAD_TENANT_OAUTH2_KEY=your_azure_client_id
-        # - SOCIAL_AUTH_AZUREAD_TENANT_OAUTH2_SECRET=your_azure_client_secret
-        # - SOCIAL_AUTH_AZUREAD_TENANT_OAUTH2_TENANT_ID=your_tenant_id
-        #
-        # - APP_DIST_STORAGE="file:///app-dist"
+            - DATABASE_URL=postgres://${DB_USER:?set DB_USER}:${DB_PASSWORD:?set DB_PASSWORD}@db:5432/${DB_NAME:?set DB_NAME}
+            - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:?set DJANGO_SECRET_KEY}
+            - DEBUG=${DEBUG:-False}
+            - PORT=80
+            - WEB_CONCURRENCY=${WEB_CONCURRENCY:-4}
 
     db:
-        image: mariadb:10.7.1
+        image: postgres:18.3-alpine3.23
         restart: always
         environment:
-            MARIADB_DATABASE: tabby
-            MARIADB_USER: user
-            MARIADB_PASSWORD: 123
-            MYSQL_ROOT_PASSWORD: 123
+            POSTGRES_DB: ${DB_NAME:?set DB_NAME}
+            POSTGRES_USER: ${DB_USER:?set DB_USER}
+            POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD}
+        volumes:
+            - db_data:/var/lib/postgresql/18/docker
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+            interval: 5s
+            timeout: 5s
+            retries: 10
+
+volumes:
+    db_data:

@@ -1,4 +1,25 @@
 .vscode
+.idea
 .env
-app-dist
-.mypy_cache
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Tooling caches
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+
+# Django
+db.sqlite3
+*.db
+/backend/public/
+
+# nginx TLS certs (self-signed or otherwise; never commit keys)
+/nginx/ssl/*.pem
+/nginx/ssl/*.key
+/nginx/ssl/*.crt

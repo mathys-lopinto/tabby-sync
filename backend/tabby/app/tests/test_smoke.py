@@ -1,0 +1,47 @@
+import io
+
+import pytest
+from django.core.management import call_command
+
+
+@pytest.mark.django_db
+class TestAdminSmoke:
+    def test_admin_redirects_to_login(self, api_client):
+        r = api_client.get("/admin/")
+        assert r.status_code in (301, 302)
+        assert "/login" in r.url
+
+    def test_admin_login_page_renders(self, api_client):
+        r = api_client.get("/admin/login/")
+        assert r.status_code == 200
+        assert b"username" in r.content.lower()
+
+
+class TestManagementCommands:
+    def test_check_passes(self):
+        out = io.StringIO()
+        call_command("check", stdout=out)
+        assert "no issues" in out.getvalue().lower()
+
+    def test_migrate_is_idempotent(self, db):
+        out = io.StringIO()
+        call_command("migrate", stdout=out, verbosity=0)
+        call_command("migrate", stdout=out, verbosity=0)
+
+
+@pytest.mark.django_db
+class TestUrls:
+    def test_root_serves_drf_router_index(self, authed_client):
+        # DRF's DefaultRouter exposes an index page at "" that lists
+        # registered viewsets. Reverse proxy still 404s on / via the
+        # path whitelist (Caddy), but Django itself answers 200.
+        r = authed_client.get("/")
+        assert r.status_code == 200
+
+    def test_unknown_path_returns_404(self, api_client):
+        r = api_client.get("/this/does/not/exist")
+        assert r.status_code == 404
+
+    def test_unknown_api_version_returns_404(self, authed_client):
+        r = authed_client.get("/api/2/configs")
+        assert r.status_code == 404

@@ -22,6 +22,9 @@ mysql = ["mysqlclient"]
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.11"
+pytest = "^9.0"
+pytest-django = "^4.9"
+pytest-cov = "^7.1"
 
 [tool.ruff]
 target-version = "py314"
@@ -36,6 +39,36 @@ ignore = [
 
 [tool.ruff.format]
 quote-style = "double"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "tabby.settings"
+python_files = ["test_*.py"]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--cov=tabby",
+    "--cov-report=term-missing",
+    "--cov-report=html:htmlcov",
+]
+
+[tool.coverage.run]
+source = ["tabby"]
+omit = [
+    "tabby/settings.py",
+    "tabby/wsgi.py",
+    "tabby/app/migrations/*",
+    "tabby/app/tests/*",
+]
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

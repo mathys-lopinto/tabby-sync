@@ -1,5 +1,8 @@
+import os
+
 wsgi_app = "tabby.wsgi:application"
-workers = 4
+bind = f"0.0.0.0:{os.getenv('PORT', '8000')}"
+workers = int(os.getenv("WEB_CONCURRENCY", "4"))
 preload_app = True
 sendfile = True
 

@@ -28,9 +28,13 @@ class Config(models.Model):
 
 class User(AbstractUser):
     active_config = models.ForeignKey(
-        Config, null=True, on_delete=models.SET_NULL, related_name="+"
+        Config,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
     )
-    active_version = models.CharField(max_length=32, null=True)
+    active_version = models.CharField(max_length=32, null=True, blank=True)
     config_sync_token_hash = models.CharField(max_length=64, db_index=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     modified_at = models.DateTimeField(auto_now=True)

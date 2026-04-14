@@ -1,3 +1,3 @@
 #!/bin/sh
 cd /app
-/venv/*/bin/python ./manage.py $@
+/venv/bin/python ./manage.py "$@"

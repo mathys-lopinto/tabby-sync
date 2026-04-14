@@ -1,0 +1,16 @@
+{% extends "admin/change_form.html" %}
+{% load admin_urls %}
+
+{% block submit_buttons_bottom %}
+    {{ block.super }}
+    {% if original %}
+        <div class="submit-row">
+            <input type="submit"
+                   name="_regenerate_token"
+                   value="Regenerate sync token"
+                   formaction="{% url 'admin:app_user_regenerate_token' original.pk %}"
+                   formmethod="post"
+                   formnovalidate>
+        </div>
+    {% endif %}
+{% endblock %}

@@ -30,14 +30,10 @@ class TestTabbyDesktopFlow:
         first = r.json()
         assert first["user"] == user.id
 
-        # 4. The client marks it as the active one.
-        r = authed_client.put(
+        # 4. The client marks it as the active one (PATCH for partial update).
+        r = authed_client.patch(
             "/api/1/user",
-            data={
-                "id": user.id,
-                "config_sync_token": user.config_sync_token,
-                "active_config": first["id"],
-            },
+            data={"active_config": first["id"]},
             format="json",
         )
         assert r.status_code == 200

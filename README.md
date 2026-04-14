@@ -133,17 +133,18 @@ poetry run ruff format .
 
 ### Creating a sync user
 
-Every client gets its own user. Steps:
+Every client gets its own user. Sync tokens are stored hashed in the database and never returned by the API, so the cleartext can only be retrieved at the moment of creation or rotation.
 
 1. Open `/admin/` and sign in with the superuser created above.
 2. Go to **Users** and click **Add user**.
    - Set a username.
    - Set **Password-based authentication** to **Disabled** (the account only uses its Bearer token).
-3. Save. Django redirects to the edit view.
-4. Open the **Tabby sync** fieldset and copy **Config sync token**.
-5. In Tabby desktop, go to **Settings** then **Config sync** and paste:
+3. Save. The admin redirects to a dedicated page that displays the newly-issued sync token in a read-only field. Click **Copy** and keep it somewhere safe.
+4. In Tabby desktop, go to **Settings** then **Config sync** and paste:
    - **Server:** your deployment URL (e.g. `http://localhost:9090` for a local Docker stack, or your HTTPS domain in prod).
    - **Token:** the value copied above.
+
+If you missed the token or lost it, open the user's edit page and click **Regenerate sync token**. A new token is issued, the old one is invalidated and Tabby desktop on the old machine will need to be reconfigured with the new value.
 
 Never grant `is_staff` or `is_superuser` to a sync-only user. Keep the admin privileges on a separate account.
 

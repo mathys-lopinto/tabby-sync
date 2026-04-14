@@ -31,12 +31,11 @@ class TestManagementCommands:
 
 @pytest.mark.django_db
 class TestUrls:
-    def test_root_serves_drf_router_index(self, authed_client):
-        # DRF's DefaultRouter exposes an index page at "" that lists
-        # registered viewsets. Reverse proxy still 404s on / via the
-        # path whitelist (Caddy), but Django itself answers 200.
+    def test_root_returns_404(self, authed_client):
+        # SimpleRouter (vs DefaultRouter) does not expose a discovery
+        # index, so / is unmatched.
         r = authed_client.get("/")
-        assert r.status_code == 200
+        assert r.status_code == 404
 
     def test_unknown_path_returns_404(self, api_client):
         r = api_client.get("/this/does/not/exist")

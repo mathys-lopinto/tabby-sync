@@ -57,28 +57,31 @@ class TestCreateSuperuserNonInteractive:
         assert u.is_superuser
         assert u.is_staff
         # The token is also auto-generated for superusers.
-        assert len(u.config_sync_token) == 128
+        # The hash is persisted; the cleartext was emitted on the
+        # original instance during the management command and is no
+        # longer accessible after re-fetching from the DB.
+        assert len(u.config_sync_token_hash) == 64
 
 
 @pytest.mark.django_db
 class TestTokenWhitespaceTolerance:
     def test_double_space_after_bearer(self, user, api_client):
         api_client.credentials(
-            HTTP_AUTHORIZATION=f"Bearer  {user.config_sync_token}"
+            HTTP_AUTHORIZATION=f"Bearer  {user._just_generated_token}"
         )
         r = api_client.get("/api/1/configs")
         assert r.status_code == 200
 
     def test_tab_after_bearer(self, user, api_client):
         api_client.credentials(
-            HTTP_AUTHORIZATION=f"Bearer\t{user.config_sync_token}"
+            HTTP_AUTHORIZATION=f"Bearer\t{user._just_generated_token}"
         )
         r = api_client.get("/api/1/configs")
         assert r.status_code == 200
 
     def test_trailing_whitespace_in_token_breaks_match(self, user, api_client):
         api_client.credentials(
-            HTTP_AUTHORIZATION=f"Bearer {user.config_sync_token} "
+            HTTP_AUTHORIZATION=f"Bearer {user._just_generated_token} "
         )
         # `.split()` returns the token without trailing space, so this
         # actually still matches.
@@ -87,7 +90,7 @@ class TestTokenWhitespaceTolerance:
 
     def test_lowercase_bearer_scheme_rejected(self, user, api_client):
         api_client.credentials(
-            HTTP_AUTHORIZATION=f"bearer {user.config_sync_token}"
+            HTTP_AUTHORIZATION=f"bearer {user._just_generated_token}"
         )
         # The middleware does an exact "Bearer" match.
         r = api_client.get("/api/1/configs")
@@ -100,7 +103,7 @@ class TestSessionAndBearerInteraction:
         # No login; just a Bearer header. Middleware should still log
         # the user in for the duration of the request.
         api_client.credentials(
-            HTTP_AUTHORIZATION=f"Bearer {user.config_sync_token}"
+            HTTP_AUTHORIZATION=f"Bearer {user._just_generated_token}"
         )
         r = api_client.get("/api/1/user")
         assert r.status_code == 200

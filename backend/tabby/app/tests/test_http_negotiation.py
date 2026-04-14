@@ -20,11 +20,12 @@ class TestOptions:
     def test_options_includes_allow_header(self, authed_client):
         r = authed_client.options("/api/1/user")
         assert "Allow" in r.headers
-        # Only GET / PUT are wired on /api/1/user.
         allow = r["Allow"].upper()
         assert "GET" in allow
         assert "PUT" in allow
-        assert "PATCH" not in allow
+        assert "PATCH" in allow
+        assert "DELETE" not in allow
+        assert "POST" not in allow
 
 
 @pytest.mark.django_db
@@ -100,30 +101,26 @@ class TestFieldsRarelyExercised:
         assert r.json()["last_used_with_version"] == "1.0.220"
 
     def test_active_version_round_trip(self, user, authed_client):
-        r = authed_client.put(
+        r = authed_client.patch(
             "/api/1/user",
-            data={
-                "id": user.id,
-                "config_sync_token": user.config_sync_token,
-                "active_config": None,
-                "active_version": "1.0.220",
-            },
+            data={"active_version": "1.0.220"},
             format="json",
         )
-        # active_version is on the model but absent from the serializer
-        # `fields` tuple, so DRF silently ignores it. Document this.
         assert r.status_code == 200
         user.refresh_from_db()
-        assert user.active_version is None
+        assert user.active_version == "1.0.220"
 
-    def test_user_serializer_fields_are_minimal(self, user, authed_client):
+    def test_user_serializer_exposes_expected_fields(self, user, authed_client):
         r = authed_client.get("/api/1/user")
         assert set(r.json().keys()) == {
             "id",
             "username",
             "active_config",
+            "active_version",
             "config_sync_token",
         }
+        # The placeholder must always be null.
+        assert r.json()["config_sync_token"] is None
 
     def test_config_serializer_fields(self, config, authed_client):
         r = authed_client.get(f"/api/1/configs/{config.id}")

@@ -1,0 +1,75 @@
+{% extends "admin/base_site.html" %}
+{% load admin_urls %}
+
+{% block title %}Sync token for {{ user_obj.username }}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">Home</a>
+    &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+    &rsaquo; <a href="{% url 'admin:app_user_changelist' %}">Users</a>
+    &rsaquo; <a href="{% url 'admin:app_user_change' user_obj.pk %}">{{ user_obj.username }}</a>
+    &rsaquo; Sync token
+</div>
+{% endblock %}
+
+{% block content %}
+{% if token %}
+    <div style="max-width: 860px; margin: 2em auto; padding: 1.5em 2em;
+                border: 2px solid #b94a48; border-radius: 6px;
+                background: #fff4f4;">
+        <h1 style="margin-top: 0; color: #b94a48;">
+            Sync token for <em>{{ user_obj.username }}</em>
+        </h1>
+        <p style="font-size: 15px; line-height: 1.5;">
+            Copy this token now. It will not be shown again. Paste it into
+            Tabby desktop under <strong>Settings &rarr; Config sync &rarr;
+            Token</strong>.
+        </p>
+
+        <div style="display: flex; gap: .5em; align-items: stretch;
+                    margin: 1.2em 0;">
+            <input id="sync-token" type="text" readonly value="{{ token }}"
+                   onclick="this.select()"
+                   style="flex: 1; padding: .7em 1em; font-family: monospace;
+                          font-size: 13px; border: 1px solid #999;
+                          border-radius: 4px; background: #fff;">
+            <button type="button" class="default"
+                    onclick="navigator.clipboard.writeText(document.getElementById('sync-token').value); this.innerText='Copied';">
+                Copy
+            </button>
+        </div>
+
+        <p style="font-size: 13px; color: #666; margin-bottom: 1.2em;">
+            Reloading this page will discard the token. The hash stored in
+            the database cannot be turned back into the cleartext.
+        </p>
+
+        <p>
+            <a class="button" href="{% url 'admin:app_user_change' user_obj.pk %}">
+                Back to user
+            </a>
+            <a class="button" href="{% url 'admin:app_user_changelist' %}">
+                Back to users list
+            </a>
+        </p>
+    </div>
+{% else %}
+    <div style="max-width: 860px; margin: 2em auto; padding: 1.5em 2em;
+                border: 1px solid #aaa; border-radius: 6px;
+                background: #fafafa;">
+        <h1 style="margin-top: 0;">Token no longer available</h1>
+        <p>
+            The cleartext token for <em>{{ user_obj.username }}</em> is only
+            displayed once, right after generation. If you missed it, go back
+            to the user page and click
+            <strong>Regenerate sync token</strong> to issue a new one.
+        </p>
+        <p>
+            <a class="button" href="{% url 'admin:app_user_change' user_obj.pk %}">
+                Back to user
+            </a>
+        </p>
+    </div>
+{% endif %}
+{% endblock %}

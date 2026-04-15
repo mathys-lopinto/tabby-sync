@@ -32,9 +32,9 @@ jobs:
               with:
                   images: ghcr.io/${{ github.repository }}
                   tags: |
-                      type=semver,pattern={{version}}
-                      type=semver,pattern={{major}}.{{minor}}
-                      type=raw,value=latest,enable=${{ !contains(github.ref_name, 'alpha') && !contains(github.ref_name, 'beta') && !contains(github.ref_name, 'rc') }}
+                      type=match,pattern=v(.*),group=1
+                      type=match,pattern=v(\d+\.\d+)\.\d+$,group=1
+                      type=raw,value=latest,enable=${{ !contains(github.ref_name, 'a') && !contains(github.ref_name, 'b') && !contains(github.ref_name, 'rc') }}
                   labels: |
                       org.opencontainers.image.title=tabby-sync
                       org.opencontainers.image.description=Minimal Tabby config sync backend

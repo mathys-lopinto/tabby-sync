@@ -1,3 +1,4 @@
+import re
 from unittest.mock import MagicMock
 
 import pytest
@@ -121,13 +122,10 @@ class TestChangeFormRegenerateButton:
         assert 'id="sync-token"' in content
         # The token is rendered into the input value attribute. Parse
         # and hash-check instead of string-matching the full 128 chars.
-        import re
-        from tabby.app.models import hash_token as ht
-
         match = re.search(r'id="sync-token"[^>]*value="([0-9a-f]{128})"', content)
         assert match, "token input with 128-hex value not found"
         user.refresh_from_db()
-        assert ht(match.group(1)) == user.config_sync_token_hash
+        assert hash_token(match.group(1)) == user.config_sync_token_hash
 
     def test_token_display_page_popped_on_second_load(self, client, user):
         c, _ = self._admin_client(client)

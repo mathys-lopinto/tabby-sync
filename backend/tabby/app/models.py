@@ -20,6 +20,9 @@ class Config(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     modified_at = models.DateTimeField(auto_now=True)
 
+    def __str__(self):
+        return self.name
+
     def save(self, *args, **kwargs):
         if not self.name:
             self.name = f"Unnamed config ({date.today()})"

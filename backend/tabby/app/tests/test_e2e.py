@@ -53,7 +53,6 @@ class TestTabbyDesktopFlow:
             format="json",
         )
         assert r.status_code == 201
-        second = r.json()
 
         # 7. Final state from the client's perspective.
         r = authed_client.get("/api/1/configs")

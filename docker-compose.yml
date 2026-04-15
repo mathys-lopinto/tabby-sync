@@ -1,3 +1,9 @@
+x-logging: &default-logging
+    driver: json-file
+    options:
+        max-size: "10m"
+        max-file: "3"
+
 services:
     tabby:
         build: .
@@ -13,6 +19,17 @@ services:
             - DEBUG=${DEBUG:-False}
             - PORT=80
             - WEB_CONCURRENCY=${WEB_CONCURRENCY:-4}
+        healthcheck:
+            test:
+                - "CMD"
+                - "python"
+                - "-c"
+                - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:80/api/health', timeout=3).getcode()==200 else 1)"
+            interval: 30s
+            timeout: 5s
+            retries: 3
+            start_period: 10s
+        logging: *default-logging
 
     db:
         image: postgres:18.3-alpine3.23
@@ -28,6 +45,7 @@ services:
             interval: 5s
             timeout: 5s
             retries: 10
+        logging: *default-logging
 
 volumes:
     db_data:

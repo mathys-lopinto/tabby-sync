@@ -99,7 +99,7 @@ docker compose up -d
 docker compose exec tabby /app/manage.sh createsuperuser
 ```
 
-The backend listens on `http://localhost:9090`. The admin is served at `/admin/`.
+The backend listens on `http://localhost:9090`. The admin is served at `/admin/`. A plain-text `/api/health` endpoint returns `ok` with no authentication required, suitable for reverse-proxy and uptime probes.
 
 ### Local development
 

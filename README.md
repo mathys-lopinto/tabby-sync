@@ -148,6 +148,23 @@ If you missed the token or lost it, open the user's edit page and click **Regene
 
 Never grant `is_staff` or `is_superuser` to a sync-only user. Keep the admin privileges on a separate account.
 
+### Scripted provisioning
+
+Two management commands are available for automation. Both print the cleartext token on `stdout` and the status message on `stderr`, so the token can be piped directly into another tool:
+
+```bash
+# Create a sync-only user and capture its token.
+TOKEN=$(docker compose exec -T tabby /app/manage.sh create_sync_user alice)
+
+# Optional email:
+docker compose exec tabby /app/manage.sh create_sync_user alice --email alice@example.com
+
+# Rotate an existing user's token (the previous value is invalidated).
+TOKEN=$(docker compose exec -T tabby /app/manage.sh refresh_token alice)
+```
+
+`create_sync_user` sets an unusable password, so the new account cannot be used to log into the admin. Use `createsuperuser` for admin accounts.
+
 ## Database selection
 
 The backend is database-agnostic. Set `DATABASE_URL` accordingly:

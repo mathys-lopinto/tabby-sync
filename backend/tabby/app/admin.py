@@ -29,9 +29,7 @@ class SyncUserAdmin(UserAdmin):
     def response_add(self, request, obj, post_url_continue=None):
         pk = request.session.pop("sync_token_pk_to_show", None)
         if pk is not None:
-            return HttpResponseRedirect(
-                reverse("admin:app_user_sync_token_shown", args=[pk])
-            )
+            return HttpResponseRedirect(reverse("admin:app_user_sync_token_shown", args=[pk]))
         return super().response_add(request, obj, post_url_continue)
 
     def get_urls(self):
@@ -57,9 +55,7 @@ class SyncUserAdmin(UserAdmin):
         token = user.set_new_token()
         user.save()
         request.session[f"sync_token_{user.pk}"] = token
-        return HttpResponseRedirect(
-            reverse("admin:app_user_sync_token_shown", args=[user.pk])
-        )
+        return HttpResponseRedirect(reverse("admin:app_user_sync_token_shown", args=[user.pk]))
 
     def sync_token_shown_view(self, request, object_id):
         user = self.get_object(request, object_id)
@@ -72,9 +68,7 @@ class SyncUserAdmin(UserAdmin):
             "user_obj": user,
             "token": token,
         }
-        return render(
-            request, "admin/app/user/sync_token_shown.html", context
-        )
+        return render(request, "admin/app/user/sync_token_shown.html", context)
 
     @admin.action(description="Regenerate sync token (shown once)")
     def regenerate_token(self, request, queryset):

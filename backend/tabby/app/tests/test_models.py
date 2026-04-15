@@ -111,6 +111,10 @@ class TestConfig:
         c.refresh_from_db()
         assert c.modified_at >= first
 
+    def test_str_returns_name(self, user):
+        c = Config.objects.create(user=user, name="my-laptop")
+        assert str(c) == "my-laptop"
+
     def test_active_config_set_null_when_target_deleted(self, user):
         c = Config.objects.create(user=user, name="x")
         user.active_config = c

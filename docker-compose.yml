@@ -6,7 +6,10 @@ x-logging: &default-logging
 
 services:
     tabby:
+        # To skip the local build and use a published image instead,
+        # comment out `build: .` and uncomment the `image:` line below.
         build: .
+#        image: ghcr.io/mathys-lopinto/tabby-sync:latest
         restart: unless-stopped
         depends_on:
             db:

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tabby-sync"
-version = "1.0.0-alpha3"
+version = "1.0.0b1"
 description = "Minimal Tabby config sync backend"
 authors = ["Mathys LOPINTO"]
 package-mode = false
@@ -34,6 +34,11 @@ extend-exclude = ["migrations"]
 select = ["E", "F", "W", "I", "UP", "B", "SIM", "DJ"]
 ignore = [
     "E501",  # line too long: handled by the formatter
+    # null=True on User.active_version and Config.last_used_with_version
+    # is kept on purpose: these fields are populated by the Tabby desktop
+    # client, and we do not want to change the stored representation
+    # (NULL vs "") without knowing what the client expects to read back.
+    "DJ001",
 ]
 
 [tool.ruff.format]

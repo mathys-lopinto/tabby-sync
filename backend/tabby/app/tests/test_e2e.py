@@ -53,7 +53,6 @@ class TestTabbyDesktopFlow:
             format="json",
         )
         assert r.status_code == 201
-        second = r.json()
 
         # 7. Final state from the client's perspective.
         r = authed_client.get("/api/1/configs")
@@ -70,9 +69,7 @@ class TestTabbyDesktopFlow:
         user.refresh_from_db()
         assert user.active_config_id == first["id"]
 
-    def test_two_users_are_isolated(
-        self, authed_client, other_authed_client, user, other_user
-    ):
+    def test_two_users_are_isolated(self, authed_client, other_authed_client, user, other_user):
         authed_client.post(
             "/api/1/configs",
             data={"name": "alice-only", "content": "{}"},

@@ -1,3 +1,4 @@
+import re
 from unittest.mock import MagicMock
 
 import pytest
@@ -24,9 +25,7 @@ class TestSyncUserAdminRegistration:
 
     def test_tabby_sync_fieldset_does_not_expose_token(self):
         ma = admin.site._registry[User]
-        sync_fieldset = next(
-            opts for name, opts in ma.fieldsets if name == "Tabby sync"
-        )
+        sync_fieldset = next(opts for name, opts in ma.fieldsets if name == "Tabby sync")
         # The cleartext token cannot be displayed; the hash should not
         # be on a form either, since it would let staff overwrite it
         # with arbitrary values.
@@ -91,15 +90,11 @@ class TestChangeFormRegenerateButton:
     POSTs to a dedicated URL and redirects back to the edit page."""
 
     def _admin_client(self, client):
-        superuser = User.objects.create_superuser(
-            username="root", password="s3cret!", email="r@x"
-        )
+        superuser = User.objects.create_superuser(username="root", password="s3cret!", email="r@x")
         client.force_login(superuser)
         return client, superuser
 
-    def test_regenerate_url_rotates_token_and_redirects_to_display(
-        self, client, user
-    ):
+    def test_regenerate_url_rotates_token_and_redirects_to_display(self, client, user):
         c, _ = self._admin_client(client)
         original_hash = user.config_sync_token_hash
 
@@ -121,13 +116,10 @@ class TestChangeFormRegenerateButton:
         assert 'id="sync-token"' in content
         # The token is rendered into the input value attribute. Parse
         # and hash-check instead of string-matching the full 128 chars.
-        import re
-        from tabby.app.models import hash_token as ht
-
         match = re.search(r'id="sync-token"[^>]*value="([0-9a-f]{128})"', content)
         assert match, "token input with 128-hex value not found"
         user.refresh_from_db()
-        assert ht(match.group(1)) == user.config_sync_token_hash
+        assert hash_token(match.group(1)) == user.config_sync_token_hash
 
     def test_token_display_page_popped_on_second_load(self, client, user):
         c, _ = self._admin_client(client)
@@ -193,9 +185,7 @@ class TestChangeFormRegenerateButton:
         if response is not None:
             assert "/sync-token-shown/" not in getattr(response, "url", "")
 
-    def test_add_user_with_continue_editing_does_not_redirect_to_display(
-        self, client
-    ):
+    def test_add_user_with_continue_editing_does_not_redirect_to_display(self, client):
         # "Save and continue editing" keeps the normal flow: session key
         # is still consumed, user lands on the token display before the
         # edit form. Assert the redirect does go through our display.

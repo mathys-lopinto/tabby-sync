@@ -11,14 +11,15 @@ def hash_token(token: str) -> str:
 
 
 class Config(models.Model):
-    user = models.ForeignKey(
-        "app.User", related_name="configs", on_delete=models.CASCADE
-    )
+    user = models.ForeignKey("app.User", related_name="configs", on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
     content = models.TextField(default="{}")
     last_used_with_version = models.CharField(max_length=32, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     modified_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
 
     def save(self, *args, **kwargs):
         if not self.name:

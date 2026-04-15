@@ -109,9 +109,7 @@ class TestConfigsRetrieveUpdateDelete:
         r = authed_client.get("/api/1/configs/99999")
         assert r.status_code == 404
 
-    def test_cannot_read_other_users_config(
-        self, other_user, other_authed_client, user
-    ):
+    def test_cannot_read_other_users_config(self, other_user, other_authed_client, user):
         their = Config.objects.create(user=user, name="mine")
         r = other_authed_client.get(f"/api/1/configs/{their.id}")
         assert r.status_code == 404

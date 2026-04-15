@@ -29,9 +29,8 @@ class TestUserEndpoint:
         user.refresh_from_db()
         # Still hashed, still the original.
         from tabby.app.models import hash_token
-        assert user.config_sync_token_hash == hash_token(
-            user._just_generated_token
-        )
+
+        assert user.config_sync_token_hash == hash_token(user._just_generated_token)
 
     def test_unauthenticated_is_forbidden(self, api_client):
         r = api_client.get("/api/1/user")
@@ -104,9 +103,7 @@ class TestUserPatch:
 
 @pytest.mark.django_db
 class TestUserCrossUserSafety:
-    def test_cannot_assign_other_users_config_as_active(
-        self, user, other_user, authed_client
-    ):
+    def test_cannot_assign_other_users_config_as_active(self, user, other_user, authed_client):
         from tabby.app.models import Config
 
         their = Config.objects.create(user=other_user, name="theirs")
@@ -145,9 +142,7 @@ class TestUserActiveConfigEdgeCases:
         user.refresh_from_db()
         assert user.active_config_id is None
 
-    def test_active_config_nulls_when_target_deleted(
-        self, user, config, authed_client
-    ):
+    def test_active_config_nulls_when_target_deleted(self, user, config, authed_client):
         user.active_config = config
         user.save()
         config.delete()

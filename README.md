@@ -1,5 +1,11 @@
 # tabby-sync
 
+[![CI](https://github.com/mathys-lopinto/tabby-sync/actions/workflows/ci.yml/badge.svg)](https://github.com/mathys-lopinto/tabby-sync/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/github/mathys-lopinto/tabby-sync/graph/badge.svg?token=UE1MPY4ACU)](https://codecov.io/github/mathys-lopinto/tabby-sync)
+[![Release](https://img.shields.io/github/v/release/mathys-lopinto/tabby-sync?include_prereleases&sort=semver)](https://github.com/mathys-lopinto/tabby-sync/releases)
+[![Python](https://img.shields.io/badge/python-3.14%2B-blue)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 A minimal, self-hostable backend for the **config sync** feature of the [Tabby terminal](https://tabby.sh).
 
 This is a stripped-down fork of [tabby-web](https://github.com/Eugeny/tabby-web) that keeps only the endpoints the Tabby desktop client calls to push and pull its `config.yaml`. Everything else that made tabby-web a full web terminal and gateway has been removed.
@@ -100,6 +106,8 @@ docker compose exec tabby /app/manage.sh createsuperuser
 ```
 
 The backend listens on `http://localhost:9090`. The admin is served at `/admin/`. A plain-text `/api/health` endpoint returns `ok` with no authentication required, suitable for reverse-proxy and uptime probes.
+
+The compose file builds the image locally by default. To skip the build and pull the published image from GHCR instead, open `docker-compose.yml` and swap `build: .` for the commented `image:` line; you can pin a specific release tag like `:1.0.0-alpha3` rather than `:latest`.
 
 ### Local development
 
@@ -223,6 +231,14 @@ The `config_sync_token` is a bearer secret. Anyone holding it can read and overw
 The backend performs no rate limiting. If the instance is exposed beyond a trusted network, rate limiting belongs on the upstream reverse proxy or WAF.
 
 The Django admin is the only supported way to provision users. On a self-hosted deployment it should live behind an IP allowlist or a VPN whenever possible, and sync-only users should never be granted `is_staff` or `is_superuser`.
+
+## Automation
+
+A GitHub Actions CI workflow runs Ruff lint, Ruff format check, and the full pytest suite with coverage gate on every push and pull request. Coverage reports are uploaded to Codecov for the badge above.
+
+A separate release workflow builds and publishes a multi-tagged Docker image to `ghcr.io/mathys-lopinto/tabby-sync` whenever a `v*.*.*` git tag is pushed. The `:latest` tag is only moved for stable releases (pre-release tags such as `alpha`, `beta` and `rc` keep their own tag and do not move `:latest`).
+
+Dependabot watches the Poetry, Docker and GitHub Actions ecosystems and opens grouped pull requests for dependency updates.
 
 ## Credits
 

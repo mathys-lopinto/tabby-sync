@@ -40,7 +40,5 @@ def authed_client(user):
 @pytest.fixture
 def other_authed_client(other_user):
     client = APIClient()
-    client.credentials(
-        HTTP_AUTHORIZATION=f"Bearer {other_user._just_generated_token}"
-    )
+    client.credentials(HTTP_AUTHORIZATION=f"Bearer {other_user._just_generated_token}")
     return client

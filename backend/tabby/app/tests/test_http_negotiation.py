@@ -44,9 +44,7 @@ class TestAcceptHeader:
         assert r.status_code in (200, 406)
 
     def test_accept_json_is_honored(self, authed_client):
-        r = authed_client.get(
-            "/api/1/configs", HTTP_ACCEPT="application/json"
-        )
+        r = authed_client.get("/api/1/configs", HTTP_ACCEPT="application/json")
         assert r.status_code == 200
         assert r["Content-Type"].startswith("application/json")
 

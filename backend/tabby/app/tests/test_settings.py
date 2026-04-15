@@ -76,45 +76,36 @@ def test_secure_proxy_ssl_header_is_set(monkeypatch):
     assert s.SECURE_PROXY_SSL_HEADER == ("HTTP_X_FORWARDED_PROTO", "https")
 
 
-def test_csrf_cookie_secure_when_https_frontend(monkeypatch):
+def test_secure_cookies_flag_turns_on_both(monkeypatch):
     s = reload_settings(
         monkeypatch,
         DJANGO_SECRET_KEY="t",
         DATABASE_URL="sqlite:///:memory:",
-        FRONTEND_URL="https://sync.example.com",
+        SECURE_COOKIES="True",
     )
-    assert getattr(s, "CSRF_COOKIE_SECURE", False) is True
-    assert getattr(s, "SESSION_COOKIE_SECURE", False) is True
+    assert s.CSRF_COOKIE_SECURE is True
+    assert s.SESSION_COOKIE_SECURE is True
 
 
-def test_no_secure_cookie_flags_without_frontend_url(monkeypatch):
+def test_secure_cookies_default_is_off(monkeypatch):
     s = reload_settings(
         monkeypatch,
         DJANGO_SECRET_KEY="t",
         DATABASE_URL="sqlite:///:memory:",
-        FRONTEND_URL=None,
-        CORS_EXTRA_URL=None,
+        SECURE_COOKIES=None,
     )
-    # No HTTPS frontend declared, so secure cookies are not forced.
     assert getattr(s, "CSRF_COOKIE_SECURE", False) is False
+    assert getattr(s, "SESSION_COOKIE_SECURE", False) is False
 
 
-def test_cors_origins_include_frontend_and_extra(monkeypatch):
+def test_cors_headers_app_and_middleware_removed(monkeypatch):
     s = reload_settings(
         monkeypatch,
         DJANGO_SECRET_KEY="t",
         DATABASE_URL="sqlite:///:memory:",
-        FRONTEND_URL="https://sync.example.com",
     )
-    assert "https://sync.example.com" in s.CORS_ALLOWED_ORIGINS
-
-    s2 = reload_settings(
-        monkeypatch,
-        DJANGO_SECRET_KEY="t",
-        DATABASE_URL="sqlite:///:memory:",
-        CORS_EXTRA_URL="https://other.example.com",
-    )
-    assert "https://other.example.com" in s2.CORS_ALLOWED_ORIGINS
+    assert "corsheaders" not in s.INSTALLED_APPS
+    assert "corsheaders.middleware.CorsMiddleware" not in s.MIDDLEWARE
 
 
 def test_token_middleware_is_active(monkeypatch):

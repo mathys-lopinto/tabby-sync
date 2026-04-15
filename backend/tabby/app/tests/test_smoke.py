@@ -44,3 +44,18 @@ class TestUrls:
     def test_unknown_api_version_returns_404(self, authed_client):
         r = authed_client.get("/api/2/configs")
         assert r.status_code == 404
+
+
+@pytest.mark.django_db
+class TestHealth:
+    def test_health_is_200_plain(self, api_client):
+        r = api_client.get("/api/health")
+        assert r.status_code == 200
+        assert r["Content-Type"].startswith("text/plain")
+        assert r.content.strip() == b"ok"
+
+    def test_health_requires_no_auth(self, api_client):
+        # Explicitly no Bearer header: the endpoint must still answer
+        # so uptime checks can reach it without provisioning a user.
+        r = api_client.get("/api/health")
+        assert r.status_code == 200

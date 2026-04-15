@@ -1,16 +1,23 @@
 import os
 from pathlib import Path
-from urllib.parse import urlparse
 
 import dj_database_url
 from dotenv import load_dotenv
 
 load_dotenv()
 
+
+def _env_bool(name, default=False):
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.lower() in ("1", "true", "yes", "on")
+
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure")
-DEBUG = os.getenv("DEBUG", "False").lower() in ("1", "true", "yes", "on")
+DEBUG = _env_bool("DEBUG", False)
 
 ALLOWED_HOSTS = ["*"]
 USE_X_FORWARDED_HOST = True
@@ -25,7 +32,6 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
-    "corsheaders",
     "tabby.app",
 ]
 
@@ -38,7 +44,6 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "corsheaders.middleware.CorsMiddleware",
     "tabby.middleware.TokenMiddleware",
 ]
 
@@ -116,35 +121,11 @@ CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_NAME = "XSRF-TOKEN"
 CSRF_HEADER_NAME = "HTTP_X_XSRF_TOKEN"
 
+# Set SECURE_COOKIES=True in production (behind HTTPS) so session and
+# CSRF cookies are only sent over TLS. Leave unset in local dev.
+if _env_bool("SECURE_COOKIES", False):
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = True
+
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "public"
-
-FRONTEND_URL = os.getenv("FRONTEND_URL")
-CORS_EXTRA_URL = os.getenv("CORS_EXTRA_URL")
-BACKEND_URL = os.getenv("BACKEND_URL")
-
-if FRONTEND_URL or CORS_EXTRA_URL:
-    cors_url = CORS_EXTRA_URL or FRONTEND_URL
-    CORS_ALLOWED_ORIGINS = [cors_url, "https://tabby.sh"]
-    CORS_ALLOW_CREDENTIALS = True
-    CORS_ALLOW_HEADERS = [
-        "accept",
-        "accept-encoding",
-        "authorization",
-        "content-type",
-        "dnt",
-        "origin",
-        "user-agent",
-        "x-xsrf-token",
-        "x-requested-with",
-    ]
-    cors_domain = urlparse(cors_url).hostname
-    CSRF_TRUSTED_ORIGINS = [cors_domain]
-    if BACKEND_URL:
-        CSRF_TRUSTED_ORIGINS.append(urlparse(BACKEND_URL).hostname)
-
-    cors_url = cors_url.rstrip("/")
-
-    if cors_url.startswith("https://"):
-        CSRF_COOKIE_SECURE = True
-        SESSION_COOKIE_SECURE = True

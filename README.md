@@ -99,7 +99,7 @@ docker compose up -d
 docker compose exec tabby /app/manage.sh createsuperuser
 ```
 
-The backend listens on `http://localhost:9090`. The admin is served at `/admin/`.
+The backend listens on `http://localhost:9090`. The admin is served at `/admin/`. A plain-text `/api/health` endpoint returns `ok` with no authentication required, suitable for reverse-proxy and uptime probes.
 
 ### Local development
 
@@ -147,6 +147,23 @@ Every client gets its own user. Sync tokens are stored hashed in the database an
 If you missed the token or lost it, open the user's edit page and click **Regenerate sync token**. A new token is issued, the old one is invalidated and Tabby desktop on the old machine will need to be reconfigured with the new value.
 
 Never grant `is_staff` or `is_superuser` to a sync-only user. Keep the admin privileges on a separate account.
+
+### Scripted provisioning
+
+Two management commands are available for automation. Both print the cleartext token on `stdout` and the status message on `stderr`, so the token can be piped directly into another tool:
+
+```bash
+# Create a sync-only user and capture its token.
+TOKEN=$(docker compose exec -T tabby /app/manage.sh create_sync_user alice)
+
+# Optional email:
+docker compose exec tabby /app/manage.sh create_sync_user alice --email alice@example.com
+
+# Rotate an existing user's token (the previous value is invalidated).
+TOKEN=$(docker compose exec -T tabby /app/manage.sh refresh_token alice)
+```
+
+`create_sync_user` sets an unusable password, so the new account cannot be used to log into the admin. Use `createsuperuser` for admin accounts.
 
 ## Database selection
 

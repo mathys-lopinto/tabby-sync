@@ -184,22 +184,6 @@ argon2 = ["argon2-cffi (>=23.1.0)"]
 bcrypt = ["bcrypt (>=4.1.1)"]
 
 [[package]]
-name = "django-cors-headers"
-version = "4.9.0"
-description = "django-cors-headers is a Django application for handling the server headers required for Cross-Origin Resource Sharing (CORS)."
-optional = false
-python-versions = ">=3.9"
-groups = ["main"]
-files = [
-    {file = "django_cors_headers-4.9.0-py3-none-any.whl", hash = "sha256:15c7f20727f90044dcee2216a9fd7303741a864865f0c3657e28b7056f61b449"},
-    {file = "django_cors_headers-4.9.0.tar.gz", hash = "sha256:fe5d7cb59fdc2c8c646ce84b727ac2bca8912a247e6e68e1fb507372178e59e8"},
-]
-
-[package.dependencies]
-asgiref = ">=3.6"
-django = ">=4.2"
-
-[[package]]
 name = "djangorestframework"
 version = "3.17.1"
 description = "Web APIs for Django, made easy."
@@ -558,4 +542,4 @@ mysql = ["mysqlclient"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.14"
-content-hash = "ffb3a30826321d0f844da6ce26d2249def8ea00cabc89837d5b4cef5756b54e6"
+content-hash = "c9b79249f876d791700babda69be5117bb688deaca5bc7ef607bdb467e1f9723"

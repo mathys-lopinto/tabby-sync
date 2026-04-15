@@ -1,0 +1,34 @@
+version: 2
+
+updates:
+    # Python dependencies managed by Poetry.
+    - package-ecosystem: pip
+      directory: /backend
+      schedule:
+          interval: weekly
+          day: monday
+      open-pull-requests-limit: 5
+      groups:
+          python-patch:
+              update-types: [patch]
+          python-minor:
+              update-types: [minor]
+
+    # Base image in the Dockerfile.
+    - package-ecosystem: docker
+      directory: /
+      schedule:
+          interval: weekly
+          day: monday
+      open-pull-requests-limit: 3
+
+    # GitHub Actions versions pinned in the workflows.
+    - package-ecosystem: github-actions
+      directory: /
+      schedule:
+          interval: weekly
+          day: monday
+      open-pull-requests-limit: 3
+      groups:
+          actions:
+              patterns: ["*"]

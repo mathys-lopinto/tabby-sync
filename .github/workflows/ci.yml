@@ -1,0 +1,64 @@
+name: CI
+
+on:
+    push:
+        branches: ["**"]
+    pull_request:
+        branches: [master]
+
+concurrency:
+    group: ci-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    lint-and-test:
+        runs-on: ubuntu-latest
+
+        defaults:
+            run:
+                working-directory: backend
+
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  fetch-depth: 2
+
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.14"
+
+            - name: Install Poetry
+              run: pipx install poetry==2.3.4
+
+            - name: Configure Poetry
+              run: poetry config virtualenvs.in-project true
+
+            - name: Cache Poetry environment
+              uses: actions/cache@v4
+              with:
+                  path: backend/.venv
+                  key: poetry-${{ runner.os }}-${{ hashFiles('backend/poetry.lock') }}
+                  restore-keys: poetry-${{ runner.os }}-
+
+            - name: Install dependencies
+              run: poetry install --with dev --extras mysql
+
+            - name: Ruff lint
+              run: poetry run ruff check .
+
+            - name: Ruff format check
+              run: poetry run ruff format --check .
+
+            - name: Pytest with coverage
+              env:
+                  DATABASE_URL: "sqlite:///:memory:"
+                  DJANGO_SECRET_KEY: ci-not-a-secret
+              run: poetry run pytest --cov-branch --cov-report=xml
+
+            - name: Upload coverage to Codecov
+              uses: codecov/codecov-action@v5
+              with:
+                  files: backend/coverage.xml
+                  token: ${{ secrets.CODECOV_TOKEN }}
+                  fail_ci_if_error: false

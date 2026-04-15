@@ -29,11 +29,7 @@ class Command(BaseCommand):
 
         token = getattr(user, "_just_generated_token", None)
         if not token:
-            raise CommandError(
-                "User was created but no cleartext token was captured."
-            )
+            raise CommandError("User was created but no cleartext token was captured.")
 
-        self.stderr.write(
-            self.style.SUCCESS(f"created sync user {username!r} (id={user.pk})")
-        )
+        self.stderr.write(self.style.SUCCESS(f"created sync user {username!r} (id={user.pk})"))
         self.stdout.write(token)

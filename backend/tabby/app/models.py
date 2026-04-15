@@ -11,9 +11,7 @@ def hash_token(token: str) -> str:
 
 
 class Config(models.Model):
-    user = models.ForeignKey(
-        "app.User", related_name="configs", on_delete=models.CASCADE
-    )
+    user = models.ForeignKey("app.User", related_name="configs", on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
     content = models.TextField(default="{}")
     last_used_with_version = models.CharField(max_length=32, null=True)

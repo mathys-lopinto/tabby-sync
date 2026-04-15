@@ -66,32 +66,24 @@ class TestCreateSuperuserNonInteractive:
 @pytest.mark.django_db
 class TestTokenWhitespaceTolerance:
     def test_double_space_after_bearer(self, user, api_client):
-        api_client.credentials(
-            HTTP_AUTHORIZATION=f"Bearer  {user._just_generated_token}"
-        )
+        api_client.credentials(HTTP_AUTHORIZATION=f"Bearer  {user._just_generated_token}")
         r = api_client.get("/api/1/configs")
         assert r.status_code == 200
 
     def test_tab_after_bearer(self, user, api_client):
-        api_client.credentials(
-            HTTP_AUTHORIZATION=f"Bearer\t{user._just_generated_token}"
-        )
+        api_client.credentials(HTTP_AUTHORIZATION=f"Bearer\t{user._just_generated_token}")
         r = api_client.get("/api/1/configs")
         assert r.status_code == 200
 
     def test_trailing_whitespace_in_token_breaks_match(self, user, api_client):
-        api_client.credentials(
-            HTTP_AUTHORIZATION=f"Bearer {user._just_generated_token} "
-        )
+        api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {user._just_generated_token} ")
         # `.split()` returns the token without trailing space, so this
         # actually still matches.
         r = api_client.get("/api/1/configs")
         assert r.status_code == 200
 
     def test_lowercase_bearer_scheme_rejected(self, user, api_client):
-        api_client.credentials(
-            HTTP_AUTHORIZATION=f"bearer {user._just_generated_token}"
-        )
+        api_client.credentials(HTTP_AUTHORIZATION=f"bearer {user._just_generated_token}")
         # The middleware does an exact "Bearer" match.
         r = api_client.get("/api/1/configs")
         assert r.status_code == 403
@@ -102,9 +94,7 @@ class TestSessionAndBearerInteraction:
     def test_bearer_token_overrides_anonymous_session(self, user, api_client):
         # No login; just a Bearer header. Middleware should still log
         # the user in for the duration of the request.
-        api_client.credentials(
-            HTTP_AUTHORIZATION=f"Bearer {user._just_generated_token}"
-        )
+        api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {user._just_generated_token}")
         r = api_client.get("/api/1/user")
         assert r.status_code == 200
         assert r.json()["username"] == "alice"

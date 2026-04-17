@@ -10,6 +10,22 @@ A minimal, self-hostable backend for the **config sync** feature of the [Tabby t
 
 This is a stripped-down fork of [tabby-web](https://github.com/Eugeny/tabby-web) that keeps only the endpoints the Tabby desktop client calls to push and pull its `config.yaml`. Everything else that made tabby-web a full web terminal and gateway has been removed.
 
+## Quick start
+
+```bash
+git clone https://github.com/mathys-lopinto/tabby-sync.git && cd tabby-sync
+cp .env.example .env
+sed -i "s/change-me-please/$(openssl rand -hex 24)/" .env
+sed -i "s/^DJANGO_SECRET_KEY=.*/DJANGO_SECRET_KEY=$(openssl rand -hex 32)/" .env
+sed -i "s/^DOMAIN=.*/DOMAIN=sync.yourdomain.com/" .env
+sed -i "s/^ACME_EMAIL=.*/ACME_EMAIL=you@yourdomain.com/" .env
+
+docker compose up -d
+docker compose exec tabby /app/manage.sh createsuperuser
+```
+
+Open `https://sync.yourdomain.com/admin/`, create a sync user, copy the token from the dedicated display page, paste it into **Tabby desktop > Settings > Config sync**.
+
 ## Why this fork
 
 Upstream `tabby-web` bundles a lot of features that most self-hosters do not need for config sync alone: an Angular web terminal, a WebSocket gateway proxy for SSH/Telnet, OAuth social auth with seven providers, GitHub Sponsors integration, Tabby version distribution, analytics.
@@ -33,12 +49,12 @@ If you only want your `config.yaml` synced between your machines, you end up run
 - No OAuth, no social login, no sign-up page. Users are created in Django admin.
 - No connection gateway for SSH/Telnet. Run one separately if you need it ([`tabby-connection-gateway`](https://github.com/Eugeny/tabby-connection-gateway)).
 - No Tabby app version distribution, no sponsors check, no analytics.
-- No TLS termination. Put a reverse proxy (Caddy, Traefik, nginx) in front.
 
 ## Stack
 
 - Python 3.14, Django 6, Django REST Framework
 - Postgres 18 by default (SQLite and MySQL/MariaDB also supported)
+- Caddy 2 as reverse proxy (ACME / Let's Encrypt by default, self-signed for LAN)
 - Gunicorn, WhiteNoise
 - Containerized with a multi-stage Dockerfile on `python:3.14-slim`
 
@@ -46,10 +62,9 @@ If you only want your `config.yaml` synced between your machines, you end up run
 
 ### Software
 
-- Python 3.14+ for local development.
-- Poetry 2.x for dependency management.
-- Docker and Docker Compose for the containerized deployment.
-- Any database supported by Django: Postgres, MySQL/MariaDB, SQLite.
+- Docker and Docker Compose for the default deployment.
+- A public domain pointing to the host (for Let's Encrypt). For LAN/VPN setups, a self-signed certificate works too.
+- Python 3.14+ and Poetry 2.x only if you develop locally outside Docker.
 
 ### System
 
@@ -67,14 +82,14 @@ This fork carries none of the upstream frontend build, so resource needs are mod
 Tabby desktop
   |  Authorization: Bearer <config_sync_token>
   v
-Reverse proxy (you provide)     <-- TLS, rate limit
-  |
+Caddy (TLS, ACME, HTTP/3)
+  |  /api/*, /admin/*, /static/* only
   v
 Gunicorn (4 workers by default)
   |
   v
 Django + DRF
-  |-- TokenMiddleware           <-- matches Bearer to User.config_sync_token
+  |-- TokenMiddleware           <-- matches Bearer hash to User
   +-- ViewSets                  <-- /api/1/configs, /api/1/user
   |
   v
@@ -85,46 +100,60 @@ Postgres / MySQL / SQLite
 
 | Method | Route | Auth | Purpose |
 |---|---|---|---|
-| `GET`, `PUT` | `/api/1/user` | Bearer | Profile of the current user |
+| `GET`, `PUT`, `PATCH` | `/api/1/user` | Bearer | Profile of the current user |
 | `GET`, `POST` | `/api/1/configs` | Bearer | List / create configs |
 | `GET`, `PUT`, `PATCH`, `DELETE` | `/api/1/configs/<id>` | Bearer | CRUD one config |
+| `GET` | `/api/health` | none | Health check for probes |
 | any | `/admin/` | session | Django admin |
 
-The Bearer value is the `config_sync_token` field on `User`, auto-generated on user creation (64 bytes, hex-encoded).
+The Bearer value is the `config_sync_token`, auto-generated on user creation (64 bytes, hex-encoded, stored as a SHA-256 hash). It is shown exactly once at creation or on explicit rotation.
 
-## Running it
+## Deployment
 
-### Production (Docker)
+### Production (default)
+
+The default `docker-compose.yml` runs three services: `tabby` (Django/gunicorn), `db` (Postgres) and `caddy` (reverse proxy with TLS). The backend is never exposed directly; only Caddy listens on ports 80 and 443.
 
 ```bash
 cp .env.example .env
-sed -i "s/change-me-please/$(openssl rand -hex 24)/" .env
-sed -i "s/^DJANGO_SECRET_KEY=.*/DJANGO_SECRET_KEY=$(openssl rand -hex 32)/" .env
-
+# Fill in DB_PASSWORD, DJANGO_SECRET_KEY, DOMAIN and ACME_EMAIL
 docker compose up -d
 docker compose exec tabby /app/manage.sh createsuperuser
 ```
 
-The backend listens on `http://localhost:9090`. The admin is served at `/admin/`. A plain-text `/api/health` endpoint returns `ok` with no authentication required, suitable for reverse-proxy and uptime probes.
+By default the compose file pulls the published image from `ghcr.io/mathys-lopinto/tabby-sync:latest`. To build locally instead, swap the `image:` and `build:` comments in `docker-compose.yml`.
 
-The compose file builds the image locally by default. To skip the build and pull the published image from GHCR instead, open `docker-compose.yml` and swap `build: .` for the commented `image:` line; you can pin a specific release tag like `:1.0.0-alpha3` rather than `:latest`.
+A plain-text `/api/health` endpoint returns `ok` with no authentication required, suitable for uptime probes.
 
-### Local development
+### Self-signed mode (LAN / VPN)
 
-The `manage.sh` wrapper is meant for the container (paths under `/app` and `/venv`). For host development, call Django through Poetry directly:
+If the host is not reachable from the Internet, ACME cannot complete. In that case, uncomment the `tls` line in `caddy/Caddyfile` (instructions are in the file) and generate a self-signed certificate:
+
+```bash
+./scripts/generate-cert.sh
+docker compose up -d
+```
+
+Every client will raise a trust warning until the certificate is imported into its trust store. On the host running Tabby desktop, add `caddy/ssl/fullchain.pem` to the system's trusted CA store (e.g. `sudo cp fullchain.pem /usr/local/share/ca-certificates/tabby-sync.crt && sudo update-ca-certificates` on Debian/Ubuntu, or import it via Keychain Access on macOS, or the certificate manager on Windows).
+
+### Local development (without Docker)
+
+A development overlay disables Caddy and exposes the backend directly on port 9090:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+```
+
+Or without Docker at all:
 
 ```bash
 cd backend
-poetry install                  # Postgres driver installed by default
-# For MariaDB/MySQL instead:
-# poetry install --extras mysql
-
+poetry install
 cat > .env <<EOF
 DATABASE_URL=sqlite:///$(pwd)/dev.db
 DJANGO_SECRET_KEY=dev-not-secret
 DEBUG=True
 EOF
-
 poetry run python manage.py migrate
 poetry run python manage.py createsuperuser
 poetry run python manage.py runserver
@@ -139,7 +168,7 @@ poetry run ruff check .
 poetry run ruff format .
 ```
 
-### Creating a sync user
+## Creating a sync user
 
 Every client gets its own user. Sync tokens are stored hashed in the database and never returned by the API, so the cleartext can only be retrieved at the moment of creation or rotation.
 
@@ -149,10 +178,10 @@ Every client gets its own user. Sync tokens are stored hashed in the database an
    - Set **Password-based authentication** to **Disabled** (the account only uses its Bearer token).
 3. Save. The admin redirects to a dedicated page that displays the newly-issued sync token in a read-only field. Click **Copy** and keep it somewhere safe.
 4. In Tabby desktop, go to **Settings** then **Config sync** and paste:
-   - **Server:** your deployment URL (e.g. `http://localhost:9090` for a local Docker stack, or your HTTPS domain in prod).
+   - **Server:** your deployment URL (e.g. `https://sync.yourdomain.com`).
    - **Token:** the value copied above.
 
-If you missed the token or lost it, open the user's edit page and click **Regenerate sync token**. A new token is issued, the old one is invalidated and Tabby desktop on the old machine will need to be reconfigured with the new value.
+If you missed the token or lost it, open the user's edit page and click **Regenerate sync token**. A new token is issued, the old one is invalidated and Tabby desktop will need to be reconfigured with the new value.
 
 Never grant `is_staff` or `is_superuser` to a sync-only user. Keep the admin privileges on a separate account.
 
@@ -161,13 +190,7 @@ Never grant `is_staff` or `is_superuser` to a sync-only user. Keep the admin pri
 Two management commands are available for automation. Both print the cleartext token on `stdout` and the status message on `stderr`, so the token can be piped directly into another tool:
 
 ```bash
-# Create a sync-only user and capture its token.
 TOKEN=$(docker compose exec -T tabby /app/manage.sh create_sync_user alice)
-
-# Optional email:
-docker compose exec tabby /app/manage.sh create_sync_user alice --email alice@example.com
-
-# Rotate an existing user's token (the previous value is invalidated).
 TOKEN=$(docker compose exec -T tabby /app/manage.sh refresh_token alice)
 ```
 
@@ -188,49 +211,15 @@ DATABASE_URL=postgres://tabby:pass@host:5432/tabby
 DATABASE_URL=mysql://tabby:pass@host:3306/tabby
 ```
 
-## HTTPS via Caddy
-
-An optional Caddy reverse-proxy stack is shipped as a compose overlay. It terminates TLS, handles HTTP/3, and only proxies `/api/*`, `/admin/*` and `/static/*` to the backend. Everything else is answered with a plain 404 so the Django instance is not exposed beyond those three paths.
-
-By default Caddy obtains a Let's Encrypt certificate over ACME on first boot. This requires the domain set in `$DOMAIN` to resolve publicly to the host and port 80 to be reachable from the Internet for the HTTP-01 challenge. Set `$ACME_EMAIL` in `.env` so Let's Encrypt can send recovery and expiry notices.
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.https.yml up -d
-```
-
-### Self-signed mode (LAN / VPN deployments)
-
-If the host is not reachable from the Internet (LAN, VPN, homelab), ACME cannot complete. In that case, generate a self-signed certificate and tell Caddy to use it instead of requesting one from Let's Encrypt. In `caddy/Caddyfile`, uncomment the `tls /etc/caddy/ssl/fullchain.pem /etc/caddy/ssl/privkey.pem` line, then run:
-
-```bash
-./scripts/generate-cert.sh
-docker compose -f docker-compose.yml -f docker-compose.https.yml up -d
-```
-
-Every client will raise a trust warning until the certificate is imported into its trust store by hand.
-
-### What this stack does not include
-
-The stack ships with secure TLS settings and standard hardening headers, but it does not include rate limiting at the proxy level, a web application firewall, or fail2ban-style IP banning. The Django admin login is reachable on the same hostname as the API, which makes it a natural brute-force target if the instance is exposed publicly. For hostile environments, put another gateway in front (Cloudflare Tunnel, a managed load balancer, or a harder Caddy config with rate limiting) and keep the tabby-sync instance itself on an internal network.
-
-### Known CVEs against `caddy:2.11.2-alpine`
-
-A Trivy scan of the pinned image reports several CVEs, but only two are reachable through our usage of Caddy (reverse proxy with a static self-signed certificate, no ACME, no file serving, no gRPC, no OpenTelemetry). Both are denial-of-service or parsing bugs, not remote code execution or authentication bypass.
-
-- **CVE-2026-32283** (Go stdlib `crypto/tls`, severity UNKNOWN). Multiple TLS 1.3 `KeyUpdate` messages from a client can cause a denial of service on the TLS server. Caddy terminates TLS on our behalf, so an attacker able to open a TLS handshake could trigger it. Fixed in Go 1.25.9 and 1.26.2; will land in a later Caddy release.
-- **CVE-2026-25679** (Go stdlib `net/url`, severity HIGH). Incorrect parsing of IPv6 host literals. Only reachable when a request Host header contains an IPv6 literal and our configuration matches on it, which is not the usual case for a LAN deployment. Fixed in Go 1.25.8 and 1.26.1.
-
-All the other findings (ACME, smallstep, go-jose, gRPC, OpenTelemetry, OpenSSL CMS, x509 chain verification, `archive/tar`, `html/template`, zlib) sit on code paths we do not exercise and are therefore not exploitable against this stack. They will still be resolved over time as we bump the base image.
-
 ## Security notes
 
-The application does not terminate TLS on its own. CSRF and session cookies are only marked `Secure` when a recognized HTTPS `FRONTEND_URL` is configured in the environment.
+Sync tokens are stored as SHA-256 hashes. The cleartext is surfaced exactly once at creation or on rotation through the admin UI or the `create_sync_user` / `refresh_token` CLI commands. A database dump does not expose usable tokens.
 
 The `config_sync_token` is a bearer secret. Anyone holding it can read and overwrite the user's Tabby configuration, so it should be treated as a password and rotated if it is ever exposed.
 
-The backend performs no rate limiting. If the instance is exposed beyond a trusted network, rate limiting belongs on the upstream reverse proxy or WAF.
+The default deployment forces all traffic through Caddy with TLS. The backend container has no published ports and is not directly reachable from outside the Docker network. Secure cookie flags are enabled by default.
 
-The Django admin is the only supported way to provision users. On a self-hosted deployment it should live behind an IP allowlist or a VPN whenever possible, and sync-only users should never be granted `is_staff` or `is_superuser`.
+The Django admin is the only supported way to provision users through a browser. Sync-only users should never be granted `is_staff` or `is_superuser`.
 
 ## Automation
 

@@ -1,0 +1,16 @@
+# Development overlay: exposes tabby directly on port 9090 without TLS.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+#
+# Not meant for production. The default docker-compose.yml forces all
+# traffic through Caddy with TLS; this overlay re-exposes the backend
+# for local testing without a domain or a certificate.
+
+services:
+    tabby:
+        ports:
+            - "${HOST_PORT:-9090}:80"
+        environment:
+            - SECURE_COOKIES=False
+
+    caddy:
+        profiles: ["disabled"]

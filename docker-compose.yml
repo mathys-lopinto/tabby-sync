@@ -8,20 +8,21 @@ services:
     tabby:
         # To skip the local build and use a published image instead,
         # comment out `build: .` and uncomment the `image:` line below.
-        build: .
-#        image: ghcr.io/mathys-lopinto/tabby-sync:latest
+        # To build the image locally instead of pulling from GHCR,
+        # comment out `image:` and uncomment `build: .` below.
+#        build: .
+        image: ghcr.io/mathys-lopinto/tabby-sync:latest
         restart: unless-stopped
         depends_on:
             db:
                 condition: service_healthy
-        ports:
-            - "${HOST_PORT:-9090}:80"
         environment:
             - DATABASE_URL=postgres://${DB_USER:?set DB_USER}:${DB_PASSWORD:?set DB_PASSWORD}@db:5432/${DB_NAME:?set DB_NAME}
             - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:?set DJANGO_SECRET_KEY}
             - DEBUG=${DEBUG:-False}
             - PORT=80
             - WEB_CONCURRENCY=${WEB_CONCURRENCY:-4}
+            - SECURE_COOKIES=${SECURE_COOKIES:-True}
         healthcheck:
             test:
                 - "CMD"
@@ -50,5 +51,32 @@ services:
             retries: 10
         logging: *default-logging
 
+    caddy:
+        image: caddy:2.11.2-alpine
+        restart: unless-stopped
+        depends_on:
+            tabby:
+                condition: service_healthy
+        ports:
+            - "80:80"
+            - "443:443"
+            - "443:443/udp"
+        environment:
+            - DOMAIN=${DOMAIN:?set DOMAIN}
+            - ACME_EMAIL=${ACME_EMAIL:-}
+        volumes:
+            - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+            - ./caddy/ssl:/etc/caddy/ssl:ro
+            - caddy_data:/data
+            - caddy_config:/config
+        healthcheck:
+            test: ["CMD", "wget", "-qO-", "http://127.0.0.1:2019/config/"]
+            interval: 30s
+            timeout: 5s
+            retries: 3
+        logging: *default-logging
+
 volumes:
     db_data:
+    caddy_data:
+    caddy_config:

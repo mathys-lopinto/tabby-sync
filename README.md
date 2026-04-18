@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/mathys-lopinto/tabby-sync/actions/workflows/ci.yml/badge.svg)](https://github.com/mathys-lopinto/tabby-sync/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/github/mathys-lopinto/tabby-sync/graph/badge.svg?token=UE1MPY4ACU)](https://codecov.io/github/mathys-lopinto/tabby-sync)
-[![Release](https://img.shields.io/github/v/release/mathys-lopinto/tabby-sync?include_prereleases&sort=semver)](https://github.com/mathys-lopinto/tabby-sync/releases)
+[![Release](https://img.shields.io/github/v/release/mathys-lopinto/tabby-sync?sort=semver)](https://github.com/mathys-lopinto/tabby-sync/releases)
 [![Python](https://img.shields.io/badge/python-3.14%2B-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
@@ -31,8 +31,6 @@ Open `https://sync.yourdomain.com/admin/`, create a sync user, copy the token fr
 Upstream `tabby-web` bundles a lot of features that most self-hosters do not need for config sync alone: an Angular web terminal, a WebSocket gateway proxy for SSH/Telnet, OAuth social auth with seven providers, GitHub Sponsors integration, Tabby version distribution, analytics.
 
 If you only want your `config.yaml` synced between your machines, you end up running, patching, and monitoring all of it anyway.
-
-`tabby-sync` keeps the backend at about 330 lines of real Python (ignoring migrations) with eight production dependencies. Small enough to read end-to-end in an afternoon and small enough that you can personally own every CVE advisory against it.
 
 ## Scope
 
@@ -225,7 +223,7 @@ The Django admin is the only supported way to provision users through a browser.
 
 A GitHub Actions CI workflow runs Ruff lint, Ruff format check, and the full pytest suite with coverage gate on every push and pull request. Coverage reports are uploaded to Codecov for the badge above.
 
-A separate release workflow builds and publishes a multi-tagged Docker image to `ghcr.io/mathys-lopinto/tabby-sync` whenever a `v*.*.*` git tag is pushed. The `:latest` tag is only moved for stable releases (pre-release tags such as `alpha`, `beta` and `rc` keep their own tag and do not move `:latest`).
+A separate release workflow builds and publishes a multi-tagged Docker image to `ghcr.io/mathys-lopinto/tabby-sync` whenever a `v*.*.*` git tag is pushed. Stable tags move `:latest`; any pre-release tag (`alpha`/`beta`/`rc`) keeps its own tag only.
 
 Dependabot watches the Poetry, Docker and GitHub Actions ecosystems and opens grouped pull requests for dependency updates.
 

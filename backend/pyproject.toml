@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tabby-sync"
-version = "1.0.0b3"
+version = "1.0.0"
 description = "Minimal Tabby config sync backend"
 authors = ["Mathys LOPINTO"]
 package-mode = false

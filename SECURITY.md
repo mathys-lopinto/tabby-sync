@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-This project is pre-1.0 and only the latest `v1.0.0-alphaN` tag is supported. Older alphas do not receive backports.
+Only the latest `v1.x.y` tag is supported. Older releases do not receive backports.
 
 ## Reporting a vulnerability
 
@@ -14,7 +14,7 @@ Include:
 - Steps to reproduce, or a proof-of-concept.
 - The affected version (commit hash or tag).
 
-You will get an acknowledgement within a few days. Fixes for confirmed issues will be released as a new alpha tag and credited in the release notes unless you prefer to remain anonymous.
+You will get an acknowledgement within a few days. Fixes for confirmed issues will be released as a new patch tag and credited in the release notes unless you prefer to remain anonymous.
 
 ## Scope
 
